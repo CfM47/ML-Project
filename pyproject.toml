@@ -1,0 +1,68 @@
+[project]
+name = "ml-project"
+version = "0.1.0"
+description = "Machine Learning Project for senior year Computer Science ML course"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.3",
+    "pandas>=2.3.2",
+    "pydantic>=2.11.9",
+    "scikit-learn>=1.7.2",
+]
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.9.1",
+    "mypy>=1.18.2",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "ruff>=0.13.1",
+]
+
+
+# Configuration for Ruff, linting and formatter
+[tool.ruff]
+# for more information see https://docs.astral.sh/ruff/rules/
+lint.select = [
+    "ERA", # For `Found commented out code errors`
+    "ANN", # For ensuring type annotations
+    "A",   # For shadowing built-ins warnings
+    "COM", # For trailing commas warnings
+    "E",   # Errors
+    "F",   # Undefined variables, unused imports, logical errors... 
+    "I",   # For sorting imports
+    "W",   # Warnings
+    "N",   # For linting naming conventions
+    "D",   # for docstring correction and styles
+]
+lint.ignore = ["D100", "D104", "D203", "D212"]
+
+exclude = [".venv", "build", "dist", "__pycache__", ".git"]
+format.quote-style = "double"
+format.indent-style = "space"
+line-length = 88
+
+# Configuration for pytest
+[tool.pytest.ini_options]
+minversion="8.0"
+addopts="-ra -q"
+testpaths=["tests"]
+pythonpath=["src"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "$version"
+version_scheme = "semver2"
+version_provider = "uv"
+major_version_zero = true
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+strict_equality = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
