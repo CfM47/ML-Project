@@ -1,0 +1,40 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: uv sync --all-groups --dev
+
+      - name: Lint with Ruff
+        run: uv run ruff check .
+
+      - name: Type check with Mypy
+        run: uv run mypy .
+
+      - name: Run tests with Pytest
+        run: uv run pytest
+
+      - name: Check commit messages with Commitizen
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          uv run cz check --rev-range origin/${{ github.base_ref }}..HEAD
