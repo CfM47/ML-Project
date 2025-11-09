@@ -5,9 +5,8 @@
 #   make lint-fix   -> Fix lint issues automatically
 #   make typecheck  -> Run mypy type checking
 #   make test       -> Run pytest
-#   make cz-check   -> Validate commit message (Commitizen)
-#   make cz-branch  -> Validate branch with Commitizen
-#   make all        -> Run lint, typecheck, and tests
+#   make commit 	-> Run commit helper
+#   make check-all  -> Run lint, typecheck, and tests
 
 # Variables
 UV = uv
@@ -45,5 +44,5 @@ commit:
 
 # ---------------------------------
 # Run all pre-commit style checks
-check_all: lint typecheck test
+check-all: lint typecheck test
 	@echo "All checks passed!"
