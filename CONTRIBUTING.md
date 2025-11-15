@@ -47,6 +47,37 @@ git pull --rebase origin dev
 
 ---
 
+## 🆕 Working on Dependent Features
+
+Sometimes you may need to start working on a feature (B) that depends on another feature (A) that is not yet merged into `dev`. In this case, you can create a new branch for feature B from the branch of feature A.
+
+1.  **Create a branch for feature B from branch A:**
+
+    ```bash
+    # Make sure you are on branch A
+    git checkout feat/branch-A
+
+    # Create branch B from branch A
+    git checkout -b feat/branch-B
+    ```
+
+2.  **Work on feature B and once feature A is merged into `dev`, you need to rebase your branch B onto `dev`.**
+
+    ```bash
+    # Make sure you are on branch B
+    git checkout feat/branch-B
+
+    # Fetch the latest changes from the remote
+    git fetch origin
+
+    # Rebase your branch onto dev
+    git rebase origin/dev
+    ```
+
+    This will reapply your changes from branch B on top of the `dev` branch.
+
+---
+
 ## 4️⃣ Squashing Commits (Optional but Recommended)
 
 Before pushing your branch, if you have multiple commits, it is recommended to **squash them into a single commit**:
