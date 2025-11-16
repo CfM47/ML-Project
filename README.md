@@ -4,6 +4,19 @@ Machine Learning Project for senior year Computer Science ML course.
 
 ![Pull Request Checks](https://github.com/CfM47/ML-Project/actions/workflows/pr-checks.yml/badge.svg)
 
+## Data
+
+### SEM Imgaes
+
+Put the SEM Images dataset in the `data/sem_images/raw/` directory.
+
+It should contain:
+
+```
+data/sem_images/raw/Brittle/{images.png...}
+data/sem_images/raw/Ductile/{images.png...}
+```
+
 ## Usage
 
 This project can be run in two modes: interactive or via command-line arguments.
