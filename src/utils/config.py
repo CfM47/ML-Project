@@ -1,17 +1,19 @@
 from pathlib import Path
+from typing import Type, TypeVar
 
 import yaml
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
-from .schemas import ApproachConfig
+T = TypeVar("T", bound=BaseModel)
 
 
-def load_config(config_path: Path) -> ApproachConfig:
+def load_config(config_path: Path, config_schema: Type[T]) -> T:
     """
     Load and validates the approach configuration from a YAML file.
 
     Args:
         config_path: Path to the YAML configuration file.
+        config_schema: The Pydantic model class to validate against.
 
     Returns:
         A validated ApproachConfig object.
@@ -27,7 +29,7 @@ def load_config(config_path: Path) -> ApproachConfig:
     with open(config_path, "r") as f:
         try:
             config_data = yaml.safe_load(f)
-            return ApproachConfig(**config_data)
+            return config_schema(**config_data)
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML file: {e}")
         except ValidationError as e:

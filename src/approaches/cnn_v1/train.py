@@ -7,8 +7,9 @@ import torch.nn as nn
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from torch.optim import SGD, Adam
 
+from src.utils.config import load_config
+
 from ...models.binary_classification.cnn_v1 import CNNBinaryClassifierV1
-from .configs.loader import load_config
 from .configs.schemas import ApproachConfig
 from .data.datasets import get_data, get_dataloader, split_exclusive
 from .schemas import TrainingContext, ValidationMetrics
@@ -18,10 +19,12 @@ def train(config_name: str = "base") -> None:
     """Run the main training experiment."""
     config_path = Path(__file__).parent / "configs" / f"{config_name}.yaml"
     saved_model_path = (
-        Path(__file__).parent.parent.parent.parent /
-        ".data" / "cnn_v1_approach" / "saved_models"
+        Path(__file__).parent.parent.parent.parent
+        / ".data"
+        / "cnn_v1_approach"
+        / "saved_models"
     )
-    config = load_config(config_path)
+    config = load_config(config_path, ApproachConfig)
 
     ctx = setup_training(config)
     train, val = get_data(config)
