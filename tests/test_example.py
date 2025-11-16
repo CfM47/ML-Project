@@ -1,4 +1,6 @@
-from src.core.example import add_two_numbers
+def add_two_numbers(a: int, b: int) -> int:
+    """Add two numbers."""
+    return a + b
 
 
 def test_add_two_numbers() -> None:
