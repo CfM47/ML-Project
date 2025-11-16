@@ -7,10 +7,11 @@ from sklearn.base import np
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import Subset
 
-from src.approaches.cnn_v1.configs.loader import load_config
+from src.approaches.cnn_v1.configs.schemas import ApproachConfig
 from src.approaches.cnn_v1.data.datasets import get_data, get_dataloader
 from src.approaches.cnn_v1.schemas import CrossValidationMetrics
 from src.approaches.cnn_v1.train import run_training_loop, setup_training
+from src.utils.config import load_config
 
 
 def validate(config_name: str = "base") -> None:
@@ -20,7 +21,7 @@ def validate(config_name: str = "base") -> None:
     Uses stratified subsets of the data of increasing size.
     """
     config_path = Path(__file__).parent / "configs" / f"{config_name}.yaml"
-    config = load_config(config_path)
+    config = load_config(config_path, ApproachConfig)
     results: List[CrossValidationMetrics] = []
 
     # Get the full dataset once

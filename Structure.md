@@ -38,6 +38,9 @@ The core philosophy is to decouple data processing, model architecture, and expe
     │   └── binary_classification/
     │       └── cnn_v1.py
     │
+    ├── utils/
+    │   └── config.py
+    │
     └── approaches/
         ├── __init__.py
         │
@@ -53,7 +56,6 @@ The core philosophy is to decouple data processing, model architecture, and expe
             └── configs/
                 ├── __init__.py
                 ├── schemas.py
-                ├── loader.py
                 └── base.yaml
 ```
 
@@ -78,6 +80,8 @@ The core philosophy is to decouple data processing, model architecture, and expe
         *   **Organization**: It's good practice to mirror the structure of `data/`, so a script that processes `data/sem_images` would live in `src/data_processing/sem_images`.
 
     *   **`src/models/`**: A shared library for reusable model **architectures** (e.g., `CNNBinaryClassifierV1`).
+
+    *   **`src/utils/`**: A collection of helper methods and utilities that can be used throughout the entire project.
 
     *   **`src/approaches/`**: The central hub for experiments. Each subdirectory is a complete, end-to-end approach to solving a problem.
         *   **`data/`**: Contains approach-specific `Dataset` classes (e.g., using PyTorch) that know how to load data from a specific directory in `.data/`.
@@ -113,4 +117,4 @@ training:
     mode: "min" # Options: "min", "max"
 ```
 
-This configuration is loaded and validated at runtime by a `loader.py` and `schemas.py` within the approach's `configs/` directory, ensuring that experiments are reproducible and robust.
+This configuration is loaded and validated at runtime by the `utils.config.load_config` function, ensuring that experiments are reproducible and robust.
