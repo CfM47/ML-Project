@@ -30,8 +30,10 @@ MaskArray = NDArray[np.uint8]  # Shape: (512, 512), values in {0, 1, 2}
 
 
 # ==============================================================================
-# Model Input Interface
+# Model Interfaces
 # ==============================================================================
+
+
 
 @dataclass
 class ModelInputInterface:
@@ -145,6 +147,55 @@ class ModelOutputInterface:
             one_hot[:, :, c] = (self.mask == c).astype(np.float32)
         return one_hot
 
+
+# ==============================================================================
+# Metrics Result Interface
+# ==============================================================================
+
+@dataclass
+class MetricsResultInterface:
+    """
+    Metrics Result Interface: Represents the result of training or evaluation.
+    
+    Attributes:
+        accuracy: Overall accuracy score (0.0 to 1.0).
+        loss: Loss value from training/evaluation.
+        iou: Intersection over Union score for segmentation tasks.
+        precision: Precision score (0.0 to 1.0).
+        recall: Recall score (0.0 to 1.0).
+        f1_score: F1 score (harmonic mean of precision and recall).
+        additional_metrics: Dictionary for any additional custom metrics.
+    """
+    
+    accuracy: float = 0.0
+    loss: float = 0.0
+    iou: float = 0.0
+    precision: float = 0.0
+    recall: float = 0.0
+    f1_score: float = 0.0
+    additional_metrics: Dict[str, Any] = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert metrics to a dictionary."""
+        return {
+            "accuracy": self.accuracy,
+            "loss": self.loss,
+            "iou": self.iou,
+            "precision": self.precision,
+            "recall": self.recall,
+            "f1_score": self.f1_score,
+            **self.additional_metrics
+        }
+    
+    def __repr__(self) -> str:
+        """Return a string representation of the metrics."""
+        return (
+            f"MetricsResultInterface("
+            f"accuracy={self.accuracy:.4f}, "
+            f"loss={self.loss:.4f}, "
+            f"iou={self.iou:.4f}, "
+            f"f1={self.f1_score:.4f})"
+        )
 
 # ==============================================================================
 # Type Alias for Dataset Sample
@@ -307,6 +358,45 @@ class DatasetInterface:
         
         return train_dataset, val_dataset
 
+
+# ==============================================================================
+# Model Interface
+# ==============================================================================
+
+class ModelInterface(ABC):
+    """
+    Model Interface: Abstract base class for machine learning models.
+    
+    Provides a standard interface for training and evaluating models.
+    Both methods receive a DatasetInterface and return a MetricsResultInterface.
+    """
+    
+    @abstractmethod
+    def train(self, dataset: "DatasetInterface") -> MetricsResultInterface:
+        """
+        Train the model on the provided dataset.
+        
+        Args:
+            dataset: The training dataset.
+        
+        Returns:
+            MetricsResultInterface containing training metrics.
+        """
+        pass
+    
+    @abstractmethod
+    def evaluate(self, dataset: "DatasetInterface") -> MetricsResultInterface:
+        """
+        Evaluate the model on the provided dataset.
+        
+        Args:
+            dataset: The evaluation dataset.
+        
+        Returns:
+            MetricsResultInterface containing evaluation metrics.
+        """
+        pass
+    
 
 # ==============================================================================
 # Data Augmentator Interface (Base Class)

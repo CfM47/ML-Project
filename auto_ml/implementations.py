@@ -16,6 +16,7 @@ from auto_ml.interfaces import (
     ImageArray,
     MaskArray,
     ModelNodeInterface,
+    ModelInterface
 )
 
 
