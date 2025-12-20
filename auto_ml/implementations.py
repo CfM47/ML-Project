@@ -71,65 +71,84 @@ def load_dataset_from_directories(
     Returns:
         Populated DatasetInterface.
     """
+    print(f"Loading from:\n  Input: {input_dir}\n  Target: {target_dir}")
+    
     input_path = Path(input_dir)
     target_path = Path(target_dir)
     
-    inputs = sorted([f for f in input_path.glob('*') if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff']])
-    targets = sorted([f for f in target_path.glob('*') if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff']])
+    # Get all input files
+    input_files = sorted([
+        f for f in input_path.glob('*') 
+        if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff']
+    ])
+    
+    # Get all target files
+    target_files = sorted([
+        f for f in target_path.glob('*') 
+        if f.suffix.lower() in ['.png'] and '_labeled' in f.name
+    ])
     
     dataset = DatasetInterface()
     
-    # Create a lookup for targets by filename
-    target_map = {t.name: t for t in targets}
-
-    for inp in inputs:
-        # Match reasoning: User specified "the two have the same name"
-        # We look for an exact filename match in the target directory.
-        if inp.name in target_map:
-            match = target_map[inp.name]
+    # Create valid pairs
+    # Heuristic: Target stem should start with Input stem
+    # Or more robust: Target name is Input stem + "_labeled"
+    
+    # Let's map normalized stems to consistency
+    target_map = {}
+    for t in target_files:
+        # standard format: "name_labeled.png" -> key: "name"
+        # Handle "  _labeled" or "_labeled"
+        stem = t.stem
+        if stem.endswith('_labeled'):
+             key = stem[:-8].strip() # remove _labeled and strip spaces
+             target_map[key] = t
+    
+    matched_count = 0
+    
+    for inp in input_files:
+        key = inp.stem.strip()
+        
+        if key in target_map:
+            target_file = target_map[key]
             try:
-                # Load Input
-                # vit/dataset.py converts L (grayscale) but we prefer preserving logic or standardizing.
-                input_img = Image.open(inp).convert("L") 
-                input_img = input_img.resize(target_size)
-                input_np = np.array(input_img) # (H, W)
+                # 1. Load Input (Grayscale L)
+                input_img = Image.open(inp).convert("L")
+                input_img = input_img.resize((512, 512))
+                input_np = np.array(input_img)
                 
-                # Check for 3D/2D consistency with Interface
-                # Interface expects (512, 512, 3) for RGB or (512, 512) for Grayscale.
-                # If we convert to L, we have (H, W).
-                
-                # Load Target
-                target_img = Image.open(match).convert("RGB")
-                target_img = target_img.resize(target_size, resample=Image.NEAREST)
+                # 2. Load Target (RGB)
+                target_img = Image.open(target_file).convert("RGB")
+                target_img = target_img.resize((512, 512), resample=Image.NEAREST)
                 target_np = np.array(target_img)
                 
-                # Process Target to Mask (0, 1, 2)
-                # Logic from vit/dataset.py: _process_target
+                # 3. Process Mask (Red/Green logic from verify logic or implementations)
+                # Reusing logic from implementations.py load_dataset_from_directories
                 r = target_np[:, :, 0]
                 g = target_np[:, :, 1]
                 b = target_np[:, :, 2]
                 
-                # Red: >100, >G+20, >B+20
                 is_red = (r > 100) & (r > g + 20) & (r > b + 20)
-                # Green: >100, >R+20, >B+20
                 is_green = (g > 100) & (g > r + 20) & (g > b + 20)
                 
-                # Default 2
-                mask = np.full_like(r, 2, dtype=np.uint8)
+                mask = np.full_like(r, 2, dtype=np.uint8) # Default 2 (background?)
                 mask[is_red] = 0
                 mask[is_green] = 1
                 
                 dataset.add_sample(input_np, mask)
+                matched_count += 1
                 
             except Exception as e:
-                print(f"Error loading pair {inp.name}: {e}")
+                print(f"Error loading {inp.name}: {e}")
         else:
-             print(f"Warning: No matching target found for {inp.name}")
-             
-    return dataset  
+            # print(f"Skipping {inp.name} (No match found for key '{key}')")
+            pass
+            
+    print(f"Loaded {len(dataset)} pairs out of {len(input_files)} input files.")
+    return dataset
 
 # ==============================================================================
-# Data Augmentator Implementations
+# Data Augmentator Node Implementation
 # ==============================================================================
 
 
@@ -137,6 +156,112 @@ def load_dataset_from_directories(
 # ==============================================================================
 # Model Implementations
 # ==============================================================================
+
+class DataAugmentatorNode(DataAugmentatorNodeInterface):
+    """
+    Data Augmentator Node implementation.
+    
+    Splits the dataset into K folds (or single split) and applies augmentation
+    to the training set of each fold.
+    """
+    
+    def __init__(
+        self, 
+        augmentator: DataAugmentatorInterface, 
+        name: str = "DataAugmentatorNode",
+        k_folds: int = 5,
+        test_size: float = 0.2,
+        random_seed: int = 42
+    ):
+        """
+        Initialize the node.
+        
+        Args:
+            augmentator: The augmentator to apply to training sets.
+            name: Name of this node instance.
+            k_folds: Number of folds for Cross Validation. 
+                     If 1, performs a single random split based on test_size.
+            test_size: Fraction of data for validation if k_folds=1.
+            random_seed: Seed for reproducibility.
+        """
+        self.augmentator = augmentator
+        self.name = name
+        self.k_folds = k_folds
+        self.test_size = test_size
+        self.random_seed = random_seed
+        
+    def process(
+        self, dataset: DatasetInterface
+    ) -> List[Tuple[DatasetInterface, DatasetInterface]]:
+        """
+        Process the dataset.
+        
+        Returns:
+            List of (augmented_train_dataset, val_dataset) tuples.
+        """
+        n_samples = len(dataset)
+        indices = np.arange(n_samples)
+        rng = np.random.default_rng(self.random_seed)
+        
+        # Shuffle indices once
+        rng.shuffle(indices)
+        
+        results = []
+        
+        if self.k_folds <= 1:
+            # Single Split
+            split_idx = int(n_samples * (1 - self.test_size))
+            train_indices = indices[:split_idx]
+            val_indices = indices[split_idx:]
+            
+            # Create Datasets
+            train_dataset = DatasetInterface.from_pairs(
+                [dataset.samples[i] for i in train_indices],
+                metadata={**dataset.metadata, "split": "train", "fold": 0}
+            )
+            val_dataset = DatasetInterface.from_pairs(
+                [dataset.samples[i] for i in val_indices],
+                metadata={**dataset.metadata, "split": "val", "fold": 0}
+            )
+            
+            # Augment Train
+            aug_train = self.augmentator.augment(train_dataset)
+            
+            results.append((aug_train, val_dataset))
+            
+        else:
+            # K-Fold Split
+            fold_sizes = np.full(self.k_folds, n_samples // self.k_folds, dtype=int)
+            fold_sizes[:n_samples % self.k_folds] += 1
+            current = 0
+            
+            for i in range(self.k_folds):
+                start, stop = current, current + fold_sizes[i]
+                val_mask = np.zeros(n_samples, dtype=bool)
+                val_mask[start:stop] = True
+                
+                val_indices_fold = indices[val_mask]
+                train_indices_fold = indices[~val_mask]
+                
+                # Create Datasets
+                train_dataset = DatasetInterface.from_pairs(
+                    [dataset.samples[j] for j in train_indices_fold],
+                    metadata={**dataset.metadata, "split": "train", "fold": i}
+                )
+                val_dataset = DatasetInterface.from_pairs(
+                    [dataset.samples[j] for j in val_indices_fold],
+                    metadata={**dataset.metadata, "split": "val", "fold": i}
+                )
+                
+                # Augment Train
+                aug_train = self.augmentator.augment(train_dataset)
+                
+                results.append((aug_train, val_dataset))
+                
+                current = stop
+                
+        return results
+
 
 class InMemoryPyTorchDataset(Dataset):
     """
@@ -424,14 +549,16 @@ class ModelNode(ModelNodeInterface):
     (e.g., cross-validation folds).
     """
     
-    def __init__(self, model: ModelInterface):
+    def __init__(self, model: ModelInterface, name: str = "ModelNode"):
         """
         Initialize the Model Node.
         
         Args:
             model: The model to train and evaluate.
+            name: Name of this node instance.
         """
         self.model = model
+        self.name = name
         
     def train(
         self, 
