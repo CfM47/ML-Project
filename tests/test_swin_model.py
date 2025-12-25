@@ -1,31 +1,32 @@
-
 import numpy as np
-import torch
-from auto_ml.interfaces import DatasetInterface
-from auto_ml.implementations import ViTModel
 
-def run_verification():
-    print("Initializing Verification for ViTModel...")
-    
+from auto_ml.implementations import SwinModel
+from auto_ml.interfaces import DatasetInterface
+
+
+def test_swin() -> None:  # noqa: D103
+    print("Initializing Verification for SwinModel...")
+
     # 1. Create dummy data
     print("Creating dummy dataset...")
     image = np.random.randint(0, 255, (512, 512, 3), dtype=np.uint8)
     mask = np.random.randint(0, 3, (512, 512), dtype=np.uint8)
-    
+
     dataset = DatasetInterface()
     # Add enough samples for a batch
     for _ in range(4):
         dataset.add_sample(image, mask)
-        
+
     print(f"Dataset created with {len(dataset)} samples.")
-    
+
     # 2. Instantiate Model
-    print("Instantiating ViTModel...")
+    print("Instantiating SwinModel...")
     try:
-        model = ViTModel(epochs=1, batch_size=2, device="cpu") # Use CPU for CI/Verification stability
-        print("ViTModel instantiated successfully.")
+        # Use CPU for CI/Verification stability
+        model = SwinModel(epochs=1, batch_size=2, device="cpu")
+        print("SwinModel instantiated successfully.")
     except Exception as e:
-        print(f"Error instantiating ViTModel: {e}")
+        print(f"Error instantiating SwinModel: {e}")
         return
 
     # 3. Test Training
@@ -37,6 +38,7 @@ def run_verification():
     except Exception as e:
         print(f"Error during training: {e}")
         import traceback
+
         traceback.print_exc()
         return
 
@@ -49,10 +51,8 @@ def run_verification():
     except Exception as e:
         print(f"Error during evaluation: {e}")
         import traceback
+
         traceback.print_exc()
         return
-        
-    print("VERIFICATION SUCCESSFUL!")
 
-if __name__ == "__main__":
-    run_verification()
+    print("VERIFICATION SUCCESSFUL!")
