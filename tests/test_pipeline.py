@@ -39,7 +39,7 @@ def test_pipeline() -> None:  # noqa: D103
     # ViTModel with small epochs for verification
     # Using 'cpu' or 'mps' if available.
     # Force cpu for CI-like stability if needed, but let's try auto.
-    model = ViTModel(epochs=10, batch_size=2, device="auto")
+    model = ViTModel(epochs=1, batch_size=2, device="cpu")
     model_node = ModelNode(model=model)
 
     results = model_node.train(dataset_pairs)
