@@ -27,21 +27,21 @@ def test_dataset_loader() -> None:  # noqa: D103
         img1.save(os.path.join(input_dir, "sample1.png"))
 
         tgt1 = Image.new("RGB", size, color=(200, 50, 50))  # Red
-        tgt1.save(os.path.join(target_dir, "sample1.png"))
+        tgt1.save(os.path.join(target_dir, "sample1_labeled.png"))
 
         # Sample 2: Green Dominant (Class 1)
         img2 = Image.new("L", size, color=150)
         img2.save(os.path.join(input_dir, "sample2.jpg"))
 
         tgt2 = Image.new("RGB", size, color=(50, 200, 50))  # Green
-        tgt2.save(os.path.join(target_dir, "sample2.jpg"))
+        tgt2.save(os.path.join(target_dir, "sample2_labeled.png"))
 
         # Sample 3: Misc/Background (Class 2)
         img3 = Image.new("L", size, color=200)
         img3.save(os.path.join(input_dir, "sample3.tiff"))
 
         tgt3 = Image.new("RGB", size, color=(50, 50, 50))  # Dark
-        tgt3.save(os.path.join(target_dir, "sample3.tiff"))
+        tgt3.save(os.path.join(target_dir, "sample3_labeled.png"))
 
         # Unmatched Sample
         img4 = Image.new("L", size, color=200)
