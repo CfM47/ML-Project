@@ -2,7 +2,7 @@ import copy
 from typing import Any, Dict, List, Optional
 
 from auto_ml.implementations import DataAugmentatorNode, EvaluatorNode, ModelNode
-from auto_ml.interfaces import DatasetInterface, MaskPair
+from auto_ml.interfaces import DatasetInterface
 
 
 class AutoML:

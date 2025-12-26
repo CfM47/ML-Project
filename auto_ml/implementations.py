@@ -23,8 +23,8 @@ from auto_ml.interfaces import (
     EvaluatorNodeInterface,
     MaskPair,
     MetricsResultInterface,
-    SegmentationModelInterface,
     ModelNodeInterface,
+    SegmentationModelInterface,
 )
 from auto_ml.models.swin.model import SwinSegmentation
 from auto_ml.models.vit.model import ViTSegmentation
@@ -579,7 +579,11 @@ class ModelNode(ModelNodeInterface):
     (e.g., cross-validation folds).
     """
 
-    def __init__(self, model: SegmentationModelInterface, name: str = "ModelNode") -> None:
+    def __init__(
+        self,
+        model: SegmentationModelInterface,
+        name: str = "ModelNode",
+    ) -> None:
         """
         Initialize the Model Node.
 
@@ -630,9 +634,7 @@ class ModelNode(ModelNodeInterface):
 
 
 class AccuracyEvaluator(EvaluatorInterface):
-    """
-    Accuracy Evaluator: Calculates overall pixel-wise accuracy.
-    """
+    """Accuracy Evaluator: Calculates overall pixel-wise accuracy."""
 
     def evaluate(self, mask_pairs: List[List[MaskPair]]) -> float:
         """Evaluate overall accuracy across all mask pairs."""
@@ -671,7 +673,8 @@ class EvaluatorNode(EvaluatorNodeInterface):
         Initialize the Evaluator Node.
 
         Args:
-            evaluators: Dictionary mapping evaluator names to EvaluatorInterface instances.
+            evaluators: Dictionary mapping evaluator names to
+                EvaluatorInterface instances.
             name: Name of this node instance.
 
         """
