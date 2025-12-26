@@ -1,7 +1,9 @@
 from pathlib import Path
 
 from auto_ml.implementations import (
+    AccuracyEvaluator,
     DataAugmentatorNode,
+    EvaluatorNode,
     IdentityAugmentator,
     ModelNode,
     ViTModel,
@@ -42,12 +44,23 @@ def test_pipeline() -> None:  # noqa: D103
     model = ViTModel(epochs=1, batch_size=2, device="cpu")
     model_node = ModelNode(model=model)
 
-    results = model_node.train(dataset_pairs)
+    # ModelNode.train() now returns List[List[MaskPair]]
+    mask_pairs_result = model_node.train(dataset_pairs)
 
     print("\n--- Step 4: Verification Results ---")
-    print(f"Mean Loss: {results['mean_loss']}")
-    for i, res in enumerate(results["results"]):
-        print(f"Fold {i + 1} Metrics: Loss={res.loss:.4f}, Accuracy={res.accuracy:.4f}")
-        assert res.loss > 0, f"Fold {i + 1} loss should be > 0"
+    print(f"Number of folds: {len(mask_pairs_result)}")
+    for i, fold_pairs in enumerate(mask_pairs_result):
+        print(f"Fold {i + 1}: {len(fold_pairs)} mask pairs")
+        assert len(fold_pairs) > 0, f"Fold {i + 1} should have mask pairs"
+
+    # 4. Optional: Run evaluator on mask pairs
+    evaluator_node = EvaluatorNode(
+        evaluators={"accuracy": AccuracyEvaluator()},
+        name="TestEvaluator",
+    )
+    eval_results = evaluator_node.evaluate(mask_pairs_result)
+    print(f"Evaluation results: {eval_results}")
+    assert "accuracy" in eval_results, "Should have accuracy result"
 
     print("\n=== PIPELINE VERIFICATION SUCCESSFUL! ===")
+

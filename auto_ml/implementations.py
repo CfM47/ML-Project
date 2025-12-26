@@ -19,9 +19,12 @@ from auto_ml.interfaces import (
     DataAugmentatorInterface,
     DataAugmentatorNodeInterface,
     DatasetInterface,
+    EvaluatorInterface,
+    EvaluatorNodeInterface,
+    MaskPair,
     MetricsResultInterface,
-    ModelInterface,
     ModelNodeInterface,
+    SegmentationModelInterface,
 )
 from auto_ml.models.swin.model import SwinSegmentation
 from auto_ml.models.vit.model import ViTSegmentation
@@ -306,7 +309,7 @@ class InMemoryPyTorchDataset(Dataset):
         return img_tensor, mask_tensor
 
 
-class ViTModel(ModelInterface):
+class ViTModel(SegmentationModelInterface):
     """
     ViT Model implementation for AutoML.
 
@@ -400,17 +403,13 @@ class ViTModel(ModelInterface):
             additional_metrics={"epochs_trained": self.epochs},
         )
 
-    def evaluate(self, dataset: DatasetInterface) -> MetricsResultInterface:
-        """Evaluate the model."""
+    def evaluate(self, dataset: DatasetInterface) -> List[MaskPair]:
+        """Evaluate the model and return predicted/real mask pairs."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(pytorch_dataset, batch_size=1, shuffle=False)
 
-        criterion = nn.CrossEntropyLoss()
-
         self.model.eval()
-        total_loss = 0
-        total_correct = 0
-        total_pixels = 0
+        mask_pairs: List[MaskPair] = []
 
         with torch.no_grad():
             for inputs, masks in dataloader:
@@ -425,26 +424,18 @@ class ViTModel(ModelInterface):
                     )
 
                 outputs = self.model(inputs)
-                loss = criterion(outputs, masks)
-                total_loss += loss.item()
 
-                # Calculate accuracy
+                # Get predicted mask
                 predictions = torch.argmax(outputs, dim=1)
-                correct = (predictions == masks).sum().item()
-                total_correct += correct
-                total_pixels += masks.numel()
+                predicted_mask = predictions.squeeze().cpu().numpy().astype(np.uint8)
+                real_mask = masks.squeeze().cpu().numpy().astype(np.uint8)
 
-        count = len(dataloader)
-        avg_loss = total_loss / count if count > 0 else 0.0
-        accuracy = total_correct / total_pixels if total_pixels > 0 else 0.0
+                mask_pairs.append((predicted_mask, real_mask))
 
-        return MetricsResultInterface(
-            loss=avg_loss,
-            accuracy=accuracy,
-        )
+        return mask_pairs
 
 
-class SwinModel(ModelInterface):
+class SwinModel(SegmentationModelInterface):
     """
     Swin Transformer Model implementation for AutoML.
 
@@ -543,17 +534,13 @@ class SwinModel(ModelInterface):
             additional_metrics={"epochs_trained": self.epochs},
         )
 
-    def evaluate(self, dataset: DatasetInterface) -> MetricsResultInterface:
-        """Evaluate the model."""
+    def evaluate(self, dataset: DatasetInterface) -> List[MaskPair]:
+        """Evaluate the model and return predicted/real mask pairs."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(pytorch_dataset, batch_size=1, shuffle=False)
 
-        criterion = nn.CrossEntropyLoss()
-
         self.model.eval()
-        total_loss = 0
-        total_correct = 0
-        total_pixels = 0
+        mask_pairs: List[MaskPair] = []
 
         with torch.no_grad():
             for inputs, masks in dataloader:
@@ -568,22 +555,15 @@ class SwinModel(ModelInterface):
                     )
 
                 outputs = self.model(inputs)
-                loss = criterion(outputs, masks)
-                total_loss += loss.item()
 
+                # Get predicted mask
                 predictions = torch.argmax(outputs, dim=1)
-                correct = (predictions == masks).sum().item()
-                total_correct += correct
-                total_pixels += masks.numel()
+                predicted_mask = predictions.squeeze().cpu().numpy().astype(np.uint8)
+                real_mask = masks.squeeze().cpu().numpy().astype(np.uint8)
 
-        count = len(dataloader)
-        avg_loss = total_loss / count if count > 0 else 0.0
-        accuracy = total_correct / total_pixels if total_pixels > 0 else 0.0
+                mask_pairs.append((predicted_mask, real_mask))
 
-        return MetricsResultInterface(
-            loss=avg_loss,
-            accuracy=accuracy,
-        )
+        return mask_pairs
 
 
 # ==============================================================================
@@ -599,7 +579,11 @@ class ModelNode(ModelNodeInterface):
     (e.g., cross-validation folds).
     """
 
-    def __init__(self, model: ModelInterface, name: str = "ModelNode") -> None:
+    def __init__(
+        self,
+        model: SegmentationModelInterface,
+        name: str = "ModelNode",
+    ) -> None:
         """
         Initialize the Model Node.
 
@@ -614,7 +598,7 @@ class ModelNode(ModelNodeInterface):
     def train(
         self,
         dataset_pairs: List[Tuple[DatasetInterface, DatasetInterface]],
-    ) -> Dict[str, Any]:
+    ) -> List[List[MaskPair]]:
         """
         Train the model on the provided dataset pairs.
 
@@ -622,13 +606,10 @@ class ModelNode(ModelNodeInterface):
             dataset_pairs: List of (train_dataset, val_dataset) tuples.
 
         Returns:
-            Dictionary containing:
-                - results: List of MetricsResultInterface (one per pair)
-                - mean_loss: Average loss across all validation sets
+            List of mask pair lists, one per dataset pair/fold.
 
         """
-        results = []
-        total_loss = 0.0
+        all_mask_pairs: List[List[MaskPair]] = []
 
         for i, (train_dataset, val_dataset) in enumerate(dataset_pairs):
             print(f"Processing split {i + 1}/{len(dataset_pairs)}...")
@@ -639,16 +620,87 @@ class ModelNode(ModelNodeInterface):
 
             # Evaluate on validation set
             print(f"  Evaluating on {len(val_dataset)} samples...")
-            metrics = self.model.evaluate(val_dataset)
+            mask_pairs = self.model.evaluate(val_dataset)
 
-            results.append(metrics)
-            total_loss += metrics.loss
+            all_mask_pairs.append(mask_pairs)
+            print(f"  Split {i + 1}: Collected {len(mask_pairs)} mask pairs")
 
-            print(f"  Split {i + 1} Results: {metrics}")
+        return all_mask_pairs
 
-        mean_loss = total_loss / len(dataset_pairs) if dataset_pairs else 0.0
 
-        return {
-            "results": results,
-            "mean_loss": mean_loss,
-        }
+# ==============================================================================
+# Evaluator Implementations
+# ==============================================================================
+
+
+class AccuracyEvaluator(EvaluatorInterface):
+    """Accuracy Evaluator: Calculates overall pixel-wise accuracy."""
+
+    def evaluate(self, mask_pairs: List[List[MaskPair]]) -> float:
+        """Evaluate overall accuracy across all mask pairs."""
+        total_correct = 0
+        total_pixels = 0
+
+        for fold_pairs in mask_pairs:
+            for predicted_mask, real_mask in fold_pairs:
+                correct = (predicted_mask == real_mask).sum()
+                total_correct += correct
+                total_pixels += real_mask.size
+
+        accuracy = total_correct / total_pixels if total_pixels > 0 else 0.0
+        return float(accuracy)
+
+
+# ==============================================================================
+# Evaluator Node Implementation
+# ==============================================================================
+
+
+class EvaluatorNode(EvaluatorNodeInterface):
+    """
+    Evaluator Node implementation.
+
+    Receives named evaluators and runs each on the mask pairs,
+    returning a dictionary of results.
+    """
+
+    def __init__(
+        self,
+        evaluators: Dict[str, EvaluatorInterface],
+        name: str = "EvaluatorNode",
+    ) -> None:
+        """
+        Initialize the Evaluator Node.
+
+        Args:
+            evaluators: Dictionary mapping evaluator names to
+                EvaluatorInterface instances.
+            name: Name of this node instance.
+
+        """
+        self.evaluators = evaluators
+        self.name = name
+
+    def evaluate(self, mask_pairs: List[List[MaskPair]]) -> Dict[str, Any]:
+        """
+        Run all evaluators on the mask pairs.
+
+        Args:
+            mask_pairs: List of mask pair lists from ModelNode.
+
+        Returns:
+            Dictionary mapping evaluator names to their results.
+
+        """
+        print(f"\n{self.name}: Running evaluators...")
+
+        results: Dict[str, Any] = {}
+
+        for eval_name, evaluator in self.evaluators.items():
+            print(f"  Running evaluator: {eval_name}")
+            result = evaluator.evaluate(mask_pairs)
+            results[eval_name] = result
+            print(f"    Result: {result}")
+
+        print(f"{self.name}: Evaluation complete.")
+        return results

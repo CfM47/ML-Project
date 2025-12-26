@@ -28,6 +28,9 @@ ImageArray = NDArray[np.uint8]
 # 512x512 segmentation mask with values 0, 1, or 2
 MaskArray = NDArray[np.uint8]  # Shape: (512, 512), values in {0, 1, 2}
 
+# Mask pair: (predicted_mask, real_mask)
+MaskPair = Tuple[MaskArray, MaskArray]
+
 
 # ==============================================================================
 # Model Interfaces
@@ -380,9 +383,9 @@ class DatasetInterface:
 # ==============================================================================
 
 
-class ModelInterface(ABC):
+class SegmentationModelInterface(ABC):
     """
-    Model Interface: Abstract base class for machine learning models.
+    Segmentation Model Interface: Abstract base class for machine learning models.
 
     Provides a standard interface for training and evaluating models.
     Both methods receive a DatasetInterface and return a MetricsResultInterface.
@@ -403,7 +406,7 @@ class ModelInterface(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, dataset: "DatasetInterface") -> MetricsResultInterface:
+    def evaluate(self, dataset: "DatasetInterface") -> List[MaskPair]:
         """
         Evaluate the model on the provided dataset.
 
@@ -411,7 +414,7 @@ class ModelInterface(ABC):
             dataset: The evaluation dataset.
 
         Returns:
-            MetricsResultInterface containing evaluation metrics.
+            List of (predicted_mask, real_mask) tuples for each sample.
 
         """
         pass
@@ -505,20 +508,20 @@ class ModelNodeInterface(ABC):
     Model Node Interface.
 
     Receives a list of dataset tuples and returns
-    a dictionary containing training results.
+    a list of mask pair lists from evaluation.
 
     This interface represents the training/evaluation node in the pipeline.
 
     Input: List[Tuple[DatasetInterface, DatasetInterface]]
            (e.g., list of (train_dataset, val_dataset) pairs)
-    Output: Dict[str, Any] containing training metrics, model info, etc.
+    Output: List[List[MaskPair]] - list of mask pair lists (one per fold)
     """
 
     @abstractmethod
     def train(
         self,
         dataset_pairs: List[Tuple[DatasetInterface, DatasetInterface]],
-    ) -> Dict[str, Any]:
+    ) -> List[List[MaskPair]]:
         """
         Train the model on the provided dataset pairs.
 
@@ -526,11 +529,8 @@ class ModelNodeInterface(ABC):
             dataset_pairs: List of (train_dataset, val_dataset) tuples.
 
         Returns:
-            Dictionary containing:
-                - metrics: Training and validation metrics
-                - model_path: Path to saved model (if applicable)
-                - training_history: History of training progress
-                - Additional implementation-specific data
+            List of mask pair lists, one list per dataset pair/fold.
+            Each inner list contains (predicted_mask, real_mask) tuples.
 
         """
         pass
@@ -538,6 +538,78 @@ class ModelNodeInterface(ABC):
     def __call__(
         self,
         dataset_pairs: List[Tuple[DatasetInterface, DatasetInterface]],
-    ) -> Dict[str, Any]:
+    ) -> List[List[MaskPair]]:
         """Allow calling the node as a function."""
         return self.train(dataset_pairs)
+
+
+# ==============================================================================
+# Evaluator Interface
+# ==============================================================================
+
+
+class EvaluatorInterface(ABC):
+    """
+    Evaluator Interface: Base class for individual evaluation metrics.
+
+    Each evaluator computes a specific metric from mask pairs.
+
+    Input: List[List[MaskPair]] - list of mask pair lists from ModelNode
+    Output: float - the evaluation result as a single value
+    """
+
+    @abstractmethod
+    def evaluate(self, mask_pairs: List[List[MaskPair]]) -> float:
+        """
+        Evaluate the mask pairs and return a metric value.
+
+        Args:
+            mask_pairs: List of mask pair lists from ModelNode,
+                       where each pair is (predicted_mask, real_mask).
+
+        Returns:
+            Evaluation metric as a float value.
+
+        """
+        pass
+
+    def __call__(self, mask_pairs: List[List[MaskPair]]) -> float:
+        """Allow calling the evaluator as a function."""
+        return self.evaluate(mask_pairs)
+
+
+# ==============================================================================
+# Evaluator Node Interface
+# ==============================================================================
+
+
+class EvaluatorNodeInterface(ABC):
+    """
+    Evaluator Node Interface.
+
+    Receives a dictionary of named evaluators and mask pairs from ModelNode.
+    Calls each evaluator and returns a dictionary of results.
+
+    Input: List[List[MaskPair]] - list of mask pair lists from ModelNode
+    Output: Dict[str, Any] - dictionary mapping evaluator names to their results
+    """
+
+    @abstractmethod
+    def evaluate(self, mask_pairs: List[List[MaskPair]]) -> Dict[str, Any]:
+        """
+        Run all evaluators on the mask pairs.
+
+        Args:
+            mask_pairs: List of mask pair lists from ModelNode,
+                       where each pair is (predicted_mask, real_mask).
+
+        Returns:
+            Dictionary mapping evaluator names to their results.
+
+        """
+        pass
+
+    def __call__(self, mask_pairs: List[List[MaskPair]]) -> Dict[str, Any]:
+        """Allow calling the node as a function."""
+        return self.evaluate(mask_pairs)
+

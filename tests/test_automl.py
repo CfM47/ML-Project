@@ -2,7 +2,9 @@ from pathlib import Path
 
 from auto_ml.automl import AutoML
 from auto_ml.implementations import (
+    AccuracyEvaluator,
     DataAugmentatorNode,
+    EvaluatorNode,
     IdentityAugmentator,
     ModelNode,
     SwinModel,
@@ -59,13 +61,22 @@ def _test_automl() -> None:  # noqa: D103
 
     models = [model_node_vit, model_node_swin]
 
+    # Evaluator Node with named evaluators
+    evaluator_node = EvaluatorNode(
+        evaluators={
+            "accuracy": AccuracyEvaluator(),
+        },
+        name="MainEvaluator",
+    )
+
     # 3. Run AutoML
     print("\n--- Step 3: Running AutoML Experiment ---")
     automl = AutoML()
-    automl.run_experiment(dataset, augmentators, models)
+    automl.run_experiment(dataset, augmentators, models, evaluator_node=evaluator_node)
 
     # 4. Results
     print("\n--- Step 4: Summary ---")
     print(automl.get_summary())
 
     print("\n=== AUTOML VERIFICATION SUCCESSFUL! ===")
+
