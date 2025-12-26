@@ -1,8 +1,8 @@
 import copy
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from auto_ml.implementations import DataAugmentatorNode, ModelNode
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.implementations import DataAugmentatorNode, EvaluatorNode, ModelNode
+from auto_ml.interfaces import DatasetInterface, MaskPair
 
 
 class AutoML:
@@ -21,7 +21,8 @@ class AutoML:
         dataset: DatasetInterface,
         augmentator_nodes: List[DataAugmentatorNode],
         model_nodes: List[ModelNode],
-    ) -> Dict[str, Dict[str, Any]]:
+        evaluator_node: Optional[EvaluatorNode] = None,
+    ) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
         Run a full experiment.
 
@@ -31,12 +32,16 @@ class AutoML:
             dataset: The base dataset.
             augmentator_nodes: List of DataAugmentatorNode instances.
             model_nodes: List of ModelNode instances.
+            evaluator_node: Optional single EvaluatorNode instance.
 
         Returns:
             Dictionary structure:
             {
                 augmentator_name: {
-                    model_name: result_dict
+                    model_name: {
+                        "mask_pairs": List[List[MaskPair]],
+                        "evaluation": Dict[str, Any] (if evaluator_node provided)
+                    }
                 }
             }
 
@@ -68,10 +73,23 @@ class AutoML:
                         # to ensure we start training from scratch (0).
                         model_node = copy.deepcopy(model_node_template)
 
-                        # Train Model
-                        result = model_node.train(dataset_pairs)
+                        # Train Model - returns List[List[MaskPair]]
+                        mask_pairs = model_node.train(dataset_pairs)
+
+                        total_pairs = sum(len(fold) for fold in mask_pairs)
+                        print(f"    Finished. Collected {total_pairs} mask pairs.")
+
+                        # Build result dict
+                        result: Dict[str, Any] = {
+                            "mask_pairs": mask_pairs,
+                        }
+
+                        # 3. Pass to Evaluator Node (if provided)
+                        if evaluator_node:
+                            evaluation_results = evaluator_node.evaluate(mask_pairs)
+                            result["evaluation"] = evaluation_results
+
                         experiment_results[aug_name][model_name] = result
-                        print(f"    Finished. Mean Loss: {result['mean_loss']:.4f}")
 
                     except Exception as e:
                         print(f"    Error training {model_name} on {aug_name}: {e}")
@@ -105,18 +123,19 @@ class AutoML:
                 continue
 
             for model_name, res in models_data.items():
-                if "error" in res:
+                if isinstance(res, dict) and "error" in res:
                     summary += f"  Model: {model_name} -> Error: {res['error']}\n"
-                else:
-                    mean_loss = res.get("mean_loss", "N/A")
-                    # Try to get mean accuracy if available in results list
-                    mean_acc = "N/A"
-                    if "results" in res and res["results"]:
-                        accs = [r.accuracy for r in res["results"]]
-                        mean_acc = sum(accs) / len(accs)
+                elif isinstance(res, dict):
+                    mask_pairs = res.get("mask_pairs", [])
+                    total_pairs = sum(len(fold) for fold in mask_pairs)
+                    summary += f"  Model: {model_name} -> {len(mask_pairs)} folds, "
+                    summary += f"{total_pairs} mask pairs\n"
 
-                    summary += f"  Model: {model_name} -> Mean Loss: {mean_loss},"
-                    summary += f" Mean Acc: {mean_acc}\n"
+                    # Show evaluation results if available
+                    if "evaluation" in res:
+                        for eval_name, eval_result in res["evaluation"].items():
+                            summary += f"    {eval_name}: {eval_result}\n"
 
         summary += "\n================================="
         return summary
+
