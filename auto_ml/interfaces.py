@@ -378,8 +378,49 @@ class DatasetInterface:
         return train_dataset, val_dataset
 
 
+# ===============================================================================
+# Classification Model Interface
+# ===============================================================================
+
+
+class ClassificationModelInterface(ABC):
+    """
+    Minimum interface for an image classifier.
+
+    Receives an image region and return a tuple of
+    (class_label, confidence), where class_label ∈ {0,1,2} and
+    confidence ∈ [0,1].
+    """
+
+    @abstractmethod
+    def classify(
+        self,
+        image: ImageArray,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> Tuple[int, float]:
+        """
+        Classify an image region.
+
+        Args:
+            image: image as numpy array.
+            x: x-coordinate of the region.
+            y: y-coordinate of the region.
+            width: width of the region.
+            height: height of the region.
+
+        Returns:
+            Tuple of (class_label, confidence),
+            where class_label ∈ {0,1,2} and confidence ∈ [0,1].
+
+        """
+        pass
+
+
 # ==============================================================================
-# Model Interface
+# Segmentation Model Interface
 # ==============================================================================
 
 
@@ -612,4 +653,3 @@ class EvaluatorNodeInterface(ABC):
     def __call__(self, mask_pairs: List[List[MaskPair]]) -> Dict[str, Any]:
         """Allow calling the node as a function."""
         return self.evaluate(mask_pairs)
-
