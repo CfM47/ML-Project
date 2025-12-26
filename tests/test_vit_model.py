@@ -46,11 +46,16 @@ def test_vit() -> None:  # noqa: D103
         return
 
     # 4. Test Evaluation
+    # evaluate() now returns List[MaskPair] instead of MetricsResultInterface
     print("Testing evaluate() method...")
     try:
-        eval_metrics = model.evaluate(dataset)
-        print("Eval Metrics:", eval_metrics)
-        assert eval_metrics.accuracy >= 0, "Accuracy should be valid"
+        mask_pairs = model.evaluate(dataset)
+        print(f"Evaluate returned {len(mask_pairs)} mask pairs")
+        assert len(mask_pairs) == len(dataset), "Should return one pair per sample"
+        # Check that each pair contains (predicted, real) masks
+        for predicted, real in mask_pairs:
+            assert predicted.shape == (512, 512), "Predicted mask should be 512x512"
+            assert real.shape == (512, 512), "Real mask should be 512x512"
     except Exception as e:
         print(f"Error during evaluation: {e}")
         import traceback
@@ -59,3 +64,4 @@ def test_vit() -> None:  # noqa: D103
         return
 
     print("VERIFICATION SUCCESSFUL!")
+
