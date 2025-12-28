@@ -3,6 +3,7 @@ from pathlib import Path
 from auto_ml.automl import AutoML
 from auto_ml.implementations import (
     AccuracyEvaluator,
+    AutoencoderMaskEvaluator,
     DataAugmentatorNode,
     EvaluatorNode,
     IdentityAugmentator,
@@ -47,21 +48,31 @@ def _run_automl() -> None:
         random_seed=42,
     )
 
-    augmentators = [aug_node_1, aug_node_2]
+    augmentators = [aug_node_1]
 
     # Models
-    vit_model = ViTModel(epochs=2, batch_size=2, device="auto")
+    vit_model = ViTModel(epochs=5, batch_size=2, device="auto")
     swin_model = SwinModel(epochs=2, batch_size=2, device="auto")
 
     model_node_vit = ModelNode(model=vit_model, name="ViT_Model_Node")
     model_node_swin = ModelNode(model=swin_model, name="Swin_Model_Node")
 
-    models = [model_node_vit, model_node_swin]
+    models = [model_node_vit]
 
-    # Evaluator Node with named evaluators
+    # Get reference masks from dataset for autoencoder training
+    reference_masks = dataset.masks
+
+    # Evaluator Node with named evaluators (including Autoencoder)
     evaluator_node = EvaluatorNode(
         evaluators={
             "accuracy": AccuracyEvaluator(),
+            "autoencoder_match": AutoencoderMaskEvaluator(
+                reference_masks=reference_masks,
+                latent_dim=8,
+                epochs=100,
+                nu=0.5,
+                device="auto",
+            ),
         },
         name="MainEvaluator",
     )
