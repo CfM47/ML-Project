@@ -111,4 +111,7 @@ class CNNClassifier(nn.Module):
         # Return probabilities or logits
         if return_logits:
             return x
-        return self.softmax(x)
+
+        sm: torch.Tensor = self.softmax(x)
+
+        return sm

@@ -1,4 +1,5 @@
-"""CNN Classifier Validation Module.
+"""
+CNN Classifier Validation Module.
 
 Perform k-fold cross-validation with varying training data percentages
 to evaluate the CNN classifier's learning curve.
@@ -19,7 +20,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from auto_ml.models.cnn.model import CNNClassifier
 
-
 # ==============================================================================
 # Configuration
 # ==============================================================================
@@ -33,7 +33,9 @@ class ValidationConfig:
     """Configuration for validation experiments."""
 
     # Data paths (relative to project root)
-    data_dir: Path = field(default_factory=lambda: _PROJECT_ROOT / "data/sem_images/raw")
+    data_dir: Path = field(
+        default_factory=lambda: _PROJECT_ROOT / "data/sem_images/raw",
+    )
     labels_file: str = "Labels.csv"
 
     # Training percentages to evaluate
@@ -54,7 +56,9 @@ class ValidationConfig:
     min_crop_size: int = 32
     max_crop_size: int = 128  # Reduced default for memory efficiency
     fixed_crop_size: Optional[int] = None  # If set, use fixed size instead of random
-    max_samples_per_image: Optional[int] = None  # If set, cap samples per image to this value
+    max_samples_per_image: Optional[int] = (
+        None  # If set, cap samples per image to this value
+    )
 
     # Model settings
     num_classes: int = 3
@@ -98,12 +102,12 @@ class PercentageMetrics:
     @property
     def mean_best_val_loss(self) -> float:
         """Calculate mean best validation loss across folds."""
-        return np.mean([fm.best_val_loss for fm in self.fold_metrics])
+        return float(np.mean([fm.best_val_loss for fm in self.fold_metrics]))
 
     @property
     def std_best_val_loss(self) -> float:
         """Calculate std of best validation loss across folds."""
-        return np.std([fm.best_val_loss for fm in self.fold_metrics])
+        return float(np.std([fm.best_val_loss for fm in self.fold_metrics]))
 
     @property
     def mean_final_val_accuracy(self) -> float:
@@ -112,7 +116,7 @@ class PercentageMetrics:
             fm.val_accuracies[fm.best_epoch] if fm.val_accuracies else 0.0
             for fm in self.fold_metrics
         ]
-        return np.mean(accuracies)
+        return float(np.mean(accuracies))
 
     @property
     def std_final_val_accuracy(self) -> float:
@@ -121,7 +125,7 @@ class PercentageMetrics:
             fm.val_accuracies[fm.best_epoch] if fm.val_accuracies else 0.0
             for fm in self.fold_metrics
         ]
-        return np.std(accuracies)
+        return float(np.std(accuracies))
 
     @property
     def mean_best_train_loss(self) -> float:
@@ -130,7 +134,7 @@ class PercentageMetrics:
             fm.train_losses[fm.best_epoch] if fm.train_losses else float("inf")
             for fm in self.fold_metrics
         ]
-        return np.mean(losses)
+        return float(np.mean(losses))
 
     @property
     def std_best_train_loss(self) -> float:
@@ -139,7 +143,7 @@ class PercentageMetrics:
             fm.train_losses[fm.best_epoch] if fm.train_losses else float("inf")
             for fm in self.fold_metrics
         ]
-        return np.std(losses)
+        return float(np.std(losses))
 
     @property
     def mean_final_train_accuracy(self) -> float:
@@ -148,7 +152,7 @@ class PercentageMetrics:
             fm.train_accuracies[fm.best_epoch] if fm.train_accuracies else 0.0
             for fm in self.fold_metrics
         ]
-        return np.mean(accuracies)
+        return float(np.mean(accuracies))
 
     @property
     def std_final_train_accuracy(self) -> float:
@@ -157,7 +161,7 @@ class PercentageMetrics:
             fm.train_accuracies[fm.best_epoch] if fm.train_accuracies else 0.0
             for fm in self.fold_metrics
         ]
-        return np.std(accuracies)
+        return float(np.std(accuracies))
 
 
 # ==============================================================================
@@ -412,7 +416,9 @@ def collate_variable_size(
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".gif"}
 
 
-def load_dataset(config: ValidationConfig) -> Tuple[List[Path], List[int], Dict[str, int]]:
+def load_dataset(
+    config: ValidationConfig,
+) -> Tuple[List[Path], List[int], Dict[str, int]]:
     """
     Load the dataset from disk.
 
@@ -628,6 +634,7 @@ def train_fold(
     )
     # Log image dimensions for first image
     from PIL import Image as _PILImage
+
     _first_img = _PILImage.open(train_paths[0])
     _expected = (train_dataset.min_crop_size + train_dataset.max_crop_size) // 2
     print(
@@ -696,11 +703,15 @@ def train_fold(
 
         # Log epoch progress
         max_epochs_str = str(config.max_epochs) if config.max_epochs else "∞"
-        status = "✓ improved" if improved else f"patience {patience_counter}/{config.patience}"
+        status = (
+            "✓ improved"
+            if improved
+            else f"patience {patience_counter}/{config.patience}"
+        )
         print(
             f"      Epoch {epoch + 1:3d}/{max_epochs_str} | "
             f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc * 100:5.1f}% | "
-            f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc * 100:5.1f}% | {status}"
+            f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc * 100:5.1f}% | {status}",
         )
 
         # Early stopping
@@ -753,9 +764,9 @@ def run_validation(
     all_metrics: List[PercentageMetrics] = []
 
     for percentage in config.train_percentages:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Training with {percentage}% of data")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         pct_metrics = PercentageMetrics(percentage=percentage)
 
@@ -785,15 +796,28 @@ def run_validation(
 
             pct_metrics.fold_metrics.append(fold_metrics)
 
-            print(f"    Best val loss: {fold_metrics.best_val_loss:.4f} at epoch {fold_metrics.best_epoch + 1}")
+            print(
+                f"    Best val loss: {fold_metrics.best_val_loss:.4f}",
+                f"at epoch {fold_metrics.best_epoch + 1}",
+            )
             if fold_metrics.stopped_early:
-                print(f"    Early stopped after {len(fold_metrics.train_losses)} epochs")
+                print(
+                    f"    Early stopped after {len(fold_metrics.train_losses)} epochs",
+                )
 
         all_metrics.append(pct_metrics)
 
         print(f"\n  {percentage}% Summary:")
-        print(f"    Mean best val loss: {pct_metrics.mean_best_val_loss:.4f} ± {pct_metrics.std_best_val_loss:.4f}")
-        print(f"    Mean val accuracy: {pct_metrics.mean_final_val_accuracy:.4f} ± {pct_metrics.std_final_val_accuracy:.4f}")
+        print(
+            "    Mean best val loss:",
+            f"{pct_metrics.mean_best_val_loss:.4f} ±",
+            f"{pct_metrics.std_best_val_loss:.4f}",
+        )
+        print(
+            "    Mean val accuracy:",
+            f"{pct_metrics.mean_final_val_accuracy:.4f} ±"
+            f"{pct_metrics.std_final_val_accuracy:.4f}",
+        )
 
     # Generate plots
     fig = plot_results(all_metrics, config)
@@ -999,7 +1023,8 @@ def main(
     Args:
         patience: Number of epochs without improvement before early stopping.
         n_folds: Number of folds for cross-validation.
-        max_epochs: Maximum number of epochs per fold. If None, train until patience runs out.
+        max_epochs: Maximum number of epochs per fold. If None, train until patience
+            runs out.
         batch_size: Batch size for training.
         learning_rate: Learning rate for optimizer.
         min_crop_size: Minimum crop size for random cropping.
