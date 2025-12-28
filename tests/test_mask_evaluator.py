@@ -3,7 +3,8 @@
 import numpy as np
 import pytest
 
-from auto_ml.implementations import AutoencoderMaskEvaluator, MaskAutoencoder
+from auto_ml.implementations import AutoencoderMaskEvaluator
+from auto_ml.models.maskautoencoder.maskautoencoder import MaskAutoencoder
 
 
 class TestMaskAutoencoder:
