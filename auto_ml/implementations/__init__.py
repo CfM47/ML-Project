@@ -10,18 +10,20 @@ from auto_ml.implementations.datasets import load_dataset_from_directories
 from auto_ml.implementations.evaluators.accuracy import AccuracyEvaluator
 from auto_ml.implementations.evaluators.autoencoder import AutoencoderMaskEvaluator
 
-# Models
-from auto_ml.implementations.models.base import InMemoryPyTorchDataset
-from auto_ml.implementations.models.quadtree_model import QuadtreeSegmentationModel
-from auto_ml.implementations.models.swin_model import SwinModel
-from auto_ml.implementations.models.vit_model import ViTModel
-
 # Nodes
 from auto_ml.implementations.nodes import (
     DataAugmentatorNode,
     EvaluatorNode,
     ModelNode,
 )
+
+# Models
+from auto_ml.implementations.segmentators.base import InMemoryPyTorchDataset
+from auto_ml.implementations.segmentators.quadtree_model import (
+    QuadtreeSegmentationModel,
+)
+from auto_ml.implementations.segmentators.swin_model import SwinModel
+from auto_ml.implementations.segmentators.vit_model import ViTModel
 
 __all__ = [
     # Augmentators
