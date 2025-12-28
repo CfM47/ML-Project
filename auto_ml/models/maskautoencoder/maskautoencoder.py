@@ -86,13 +86,15 @@ class MaskAutoencoder(nn.Module):
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """Encode input to latent space."""
-        return self.encoder(x)
+        result: torch.Tensor = self.encoder(x)
+        return result
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
         """Decode latent vector to reconstruction."""
         x = self.decoder_fc(z)
         x = x.view(-1, 512, 4, 4)
-        return self.decoder_conv(x)
+        result: torch.Tensor = self.decoder_conv(x)
+        return result
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass: returns (reconstruction, latent_vector)."""

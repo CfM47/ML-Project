@@ -6,7 +6,7 @@ interfaces defined in interfaces.py.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -784,7 +784,7 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
 
         # Initialize and train autoencoder
         self.autoencoder = MaskAutoencoder(latent_dim=latent_dim).to(self.device)
-        self._classifier = None
+        self._classifier: Optional[Any] = None
 
         # Train immediately
         self._train(reference_masks)
@@ -840,6 +840,7 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
                 embeddings.append(z.cpu().numpy().squeeze())
 
         self._classifier = OneClassSVM(nu=self.nu, kernel=self.kernel)
+        assert self._classifier is not None
         self._classifier.fit(np.array(embeddings))
         print("  Training complete.")
 
@@ -873,6 +874,7 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
             return 0.0
 
         # Classify predicted masks against reference distribution
+        assert self._classifier is not None
         matches = 0
         for pred_mask in predicted_masks:
             embedding = self.encode(pred_mask)
