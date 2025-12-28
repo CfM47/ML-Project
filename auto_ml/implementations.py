@@ -752,8 +752,6 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
             device: Device to use ('auto', 'cpu', 'cuda', 'mps').
 
         """
-        from sklearn.svm import OneClassSVM
-
         self.reference_masks = reference_masks
         self.latent_dim = latent_dim
         self.epochs = epochs
@@ -768,7 +766,9 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
 
         for i, mask in enumerate(reference_masks):
             if mask.shape != (512, 512):
-                raise ValueError(f"Reference mask {i} must be 512x512, got {mask.shape}")
+                raise ValueError(
+                    f"Reference mask {i} must be 512x512, got {mask.shape}",
+                )
 
         # Setup device
         if device == "auto":
@@ -791,7 +791,11 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
 
     def _mask_to_tensor(self, mask: MaskArray) -> torch.Tensor:
         """Convert mask array to normalized tensor."""
-        mask_normalized = mask.astype(np.float32) / mask.max() if mask.max() > 0 else mask.astype(np.float32)
+        mask_normalized = (
+            mask.astype(np.float32) / mask.max()
+            if mask.max() > 0
+            else mask.astype(np.float32)
+        )
         tensor = torch.from_numpy(mask_normalized).unsqueeze(0).unsqueeze(0)
         return tensor.to(self.device)
 
@@ -856,7 +860,8 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
                        where each pair is (predicted_mask, real_mask).
 
         Returns:
-            Float ratio (0.0-1.0) of predicted masks matching the reference distribution.
+            Float ratio (0.0-1.0) of predicted masks matching the reference
+            distribution.
 
         """
         predicted_masks = []

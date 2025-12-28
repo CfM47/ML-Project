@@ -29,7 +29,10 @@ class TestMaskAutoencoder:
         z = torch.randn(1, 3)
         recon = model.decode(z)
 
-        assert recon.shape == (1, 1, 512, 512), f"Expected (1, 1, 512, 512), got {recon.shape}"
+        expected_shape = (1, 1, 512, 512)
+        assert recon.shape == expected_shape, (
+            f"Expected {expected_shape}, got {recon.shape}"
+        )
 
     def test_forward_pass(self) -> None:
         """Test full forward pass returns reconstruction and latent."""
@@ -98,7 +101,7 @@ class TestAutoencoderMaskEvaluator:
         evaluator = AutoencoderMaskEvaluator(
             reference_masks=real_masks,
             device="cpu",
-            epochs=5
+            epochs=5,
         )
 
         # Get embeddings for real masks

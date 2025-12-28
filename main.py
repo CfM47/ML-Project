@@ -41,7 +41,7 @@ def _run_automl() -> None:
         random_seed=42,
     )
 
-    aug_node_2 = DataAugmentatorNode(
+    aug_node_2 = DataAugmentatorNode(  # noqa: F841
         augmentator=IdentityAugmentator(),  # reusing identity for now
         name="Aug_Identity_K3",
         k_folds=3,
@@ -55,7 +55,7 @@ def _run_automl() -> None:
     swin_model = SwinModel(epochs=2, batch_size=2, device="auto")
 
     model_node_vit = ModelNode(model=vit_model, name="ViT_Model_Node")
-    model_node_swin = ModelNode(model=swin_model, name="Swin_Model_Node")
+    model_node_swin = ModelNode(model=swin_model, name="Swin_Model_Node")  # noqa: F841
 
     models = [model_node_vit]
 
