@@ -612,4 +612,3 @@ class EvaluatorNodeInterface(ABC):
     def __call__(self, mask_pairs: List[List[MaskPair]]) -> Dict[str, Any]:
         """Allow calling the node as a function."""
         return self.evaluate(mask_pairs)
-
