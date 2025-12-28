@@ -13,7 +13,7 @@ from auto_ml.implementations import (
 )
 
 
-def _test_automl() -> None:  # noqa: D103
+def test_automl() -> None:  # noqa: D103
     print("=== Starting AutoML Verification ===")
 
     # Paths
@@ -79,4 +79,3 @@ def _test_automl() -> None:  # noqa: D103
     print(automl.get_summary())
 
     print("\n=== AUTOML VERIFICATION SUCCESSFUL! ===")
-
