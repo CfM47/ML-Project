@@ -8,15 +8,17 @@ from auto_ml.implementations import (
     ElasticDeformationAugmentator,
     ScanLineNoiseAugmentator,
 )
+from auto_ml.interfaces import DatasetInterface
 
 
-class SimpleDataset:
+class SimpleDataset(DatasetInterface):
     """Simple dataset for testing."""
 
     def __init__(self, samples: list[tuple[np.ndarray, np.ndarray]]) -> None:
         """Initialize dataset with samples."""
-        self.samples = samples
-        self.metadata: dict = {}
+        super().__init__()
+        for image, mask in samples:
+            self.add_sample(image, mask)
 
 
 def test_elastic_deformation_augmentator() -> None:

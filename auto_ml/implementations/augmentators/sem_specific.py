@@ -85,7 +85,7 @@ class ElasticDeformationAugmentator(DataAugmentatorInterface):
                 borderMode=cv2.BORDER_REFLECT,
             ).astype(mask.dtype)
 
-            augmented_samples.append((aug_image, aug_mask))
+            augmented_samples.append((aug_image.astype(np.uint8), aug_mask))
 
         return DatasetInterface.from_pairs(
             augmented_samples,
@@ -138,7 +138,7 @@ class AdaptiveHistogramEqualizationAugmentator(DataAugmentatorInterface):
                     channels.append(channel)
                 aug_image = np.stack(channels, axis=2)
 
-            augmented_samples.append((aug_image, mask))
+            augmented_samples.append((aug_image.astype(np.uint8), mask))
 
         return DatasetInterface.from_pairs(
             augmented_samples,
@@ -215,9 +215,9 @@ class ChargingArtifactAugmentator(DataAugmentatorInterface):
                         )
 
             # Clip and convert back
-            aug_image = np.clip(aug_image, 0, 255).astype(image.dtype)
+            aug_image_uint8: np.ndarray = np.clip(aug_image, 0, 255).astype(np.uint8)
 
-            augmented_samples.append((aug_image, mask))
+            augmented_samples.append((aug_image_uint8, mask))
 
         return DatasetInterface.from_pairs(
             augmented_samples,
@@ -289,10 +289,10 @@ class ScanLineNoiseAugmentator(DataAugmentatorInterface):
                             for c in range(image.shape[2]):
                                 aug_image[:, j, c] += noise
 
-            # Clip and convert back
-            aug_image = np.clip(aug_image, 0, 255).astype(image.dtype)
+            # Clip values to valid range
+            aug_image_uint8: np.ndarray = np.clip(aug_image, 0, 255).astype(np.uint8)
 
-            augmented_samples.append((aug_image, mask))
+            augmented_samples.append((aug_image_uint8, mask))
 
         return DatasetInterface.from_pairs(
             augmented_samples,

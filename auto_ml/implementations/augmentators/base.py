@@ -54,7 +54,7 @@ def apply_affine_to_image(
             channels.append(channel)
         result = np.stack(channels, axis=2)
 
-    return result.astype(image.dtype)
+    return result.astype(image.dtype)  # type: ignore[no-any-return]
 
 
 def apply_affine_to_mask(
@@ -83,7 +83,7 @@ def apply_affine_to_mask(
         cval=fill_value,
     )
 
-    return result.astype(mask.dtype)
+    return result.astype(mask.dtype)  # type: ignore[no-any-return]
 
 
 def rotation_matrix(angle_degrees: float, center: Tuple[float, float]) -> np.ndarray:
