@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Tuple
 
 import numpy as np
+import torch
 from numpy.typing import NDArray
 
 # ==============================================================================
@@ -31,6 +32,11 @@ MaskArray = NDArray[np.uint8]  # Shape: (512, 512), values in {0, 1, 2}
 # Mask pair: (predicted_mask, real_mask)
 MaskPair = Tuple[MaskArray, MaskArray]
 
+# Classification dataset sample: (image, label)
+ClassificationDatasetSample = Tuple[ImageArray, int]
+
+# A dataset sample is a pair of (image, mask)
+SegmentationDatasetSample = Tuple[ImageArray, MaskArray]
 
 # ==============================================================================
 # Model Interfaces
@@ -209,20 +215,12 @@ class MetricsResultInterface:
 
 
 # ==============================================================================
-# Type Alias for Dataset Sample
-# ==============================================================================
-
-# A dataset sample is a pair of (image, mask)
-DatasetSample = Tuple[ImageArray, MaskArray]
-
-
-# ==============================================================================
 # Dataset Interface
 # ==============================================================================
 
 
 @dataclass
-class DatasetInterface:
+class SegmentationDatasetInterface:
     """
     Dataset Interface: A collection of 512x512 original images and their masks.
 
@@ -235,7 +233,7 @@ class DatasetInterface:
 
     """
 
-    samples: List[DatasetSample] = field(default_factory=list)
+    samples: List[SegmentationDatasetSample] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __len__(self) -> int:
@@ -259,12 +257,12 @@ class DatasetInterface:
             ModelOutputInterface(mask=mask),
         )
 
-    def __iter__(self) -> Iterator[DatasetSample]:
+    def __iter__(self) -> Iterator[SegmentationDatasetSample]:
         """Iterate over all samples in the dataset."""
         for sample in self.samples:
             yield sample
 
-    def get_raw_sample(self, idx: int) -> DatasetSample:
+    def get_raw_sample(self, idx: int) -> SegmentationDatasetSample:
         """
         Get a raw sample (image, mask) pair without wrapping in interfaces.
 
@@ -302,7 +300,7 @@ class DatasetInterface:
 
         self.samples.append((image, mask))
 
-    def add_pair(self, pair: DatasetSample) -> None:
+    def add_pair(self, pair: SegmentationDatasetSample) -> None:
         """
         Add a new (image, mask) pair to the dataset.
 
@@ -316,9 +314,9 @@ class DatasetInterface:
     @classmethod
     def from_pairs(
         cls,
-        pairs: List[DatasetSample],
+        pairs: List[SegmentationDatasetSample],
         metadata: Dict[str, Any] | None = None,
-    ) -> "DatasetInterface":
+    ) -> "SegmentationDatasetInterface":
         """
         Create a dataset from a list of (image, mask) pairs.
 
@@ -340,7 +338,7 @@ class DatasetInterface:
         ratio: float = 0.8,
         shuffle: bool = True,
         random_seed: int | None = None,
-    ) -> Tuple["DatasetInterface", "DatasetInterface"]:
+    ) -> Tuple["SegmentationDatasetInterface", "SegmentationDatasetInterface"]:
         """
         Split the dataset into two parts.
 
@@ -365,12 +363,236 @@ class DatasetInterface:
         train_indices = indices[:split_idx]
         val_indices = indices[split_idx:]
 
-        train_dataset = DatasetInterface(
+        train_dataset = SegmentationDatasetInterface(
             samples=[self.samples[i] for i in train_indices],
             metadata={**self.metadata, "split": "train"},
         )
 
-        val_dataset = DatasetInterface(
+        val_dataset = SegmentationDatasetInterface(
+            samples=[self.samples[i] for i in val_indices],
+            metadata={**self.metadata, "split": "val"},
+        )
+
+        return train_dataset, val_dataset
+
+
+# ===============================================================================
+# Classification Dataset Interface
+# ===============================================================================
+
+
+@dataclass
+class ClassificationDatasetInterface:
+    """
+    Classification Dataset Interface: A collection of image regions and labels.
+
+    Store training data for classification models. Each sample consists of
+    an image array and its corresponding class label.
+
+    Attributes:
+        samples: List of (image, label) pairs.
+        metadata: Optional dictionary containing dataset metadata.
+
+    """
+
+    samples: List[ClassificationDatasetSample] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> Tuple[ImageArray, int]:
+        """
+        Get a single sample from the dataset.
+
+        Args:
+            idx: Index of the sample.
+
+        Returns:
+            Tuple of (image array, label).
+
+        """
+        return self.samples[idx]
+
+    def __iter__(self) -> Iterator[ClassificationDatasetSample]:
+        """Iterate over all samples in the dataset."""
+        for sample in self.samples:
+            yield sample
+
+    def get_raw_sample(self, idx: int) -> ClassificationDatasetSample:
+        """
+        Get a raw sample (image, label) pair.
+
+        Args:
+            idx: Index of the sample.
+
+        Returns:
+            Tuple of (image array, label).
+
+        """
+        return self.samples[idx]
+
+    @property
+    def images(self) -> List[ImageArray]:
+        """Get all images from the dataset."""
+        return [sample[0] for sample in self.samples]
+
+    @property
+    def labels(self) -> List[int]:
+        """Get all labels from the dataset."""
+        return [sample[1] for sample in self.samples]
+
+    def add_sample(self, image: ImageArray, label: int) -> None:
+        """
+        Add a new sample to the dataset.
+
+        Args:
+            image: Image array.
+            label: Class label (integer).
+
+        """
+        self.samples.append((image, label))
+
+    def add_pair(self, pair: ClassificationDatasetSample) -> None:
+        """
+        Add a new (image, label) pair to the dataset.
+
+        Args:
+            pair: Tuple of (image array, label).
+
+        """
+        image, label = pair
+        self.add_sample(image, label)
+
+    @classmethod
+    def from_pairs(
+        cls,
+        pairs: List[ClassificationDatasetSample],
+        metadata: Dict[str, Any] | None = None,
+    ) -> "ClassificationDatasetInterface":
+        """
+        Create a dataset from a list of (image, label) pairs.
+
+        Args:
+            pairs: List of (image, label) tuples.
+            metadata: Optional metadata dictionary.
+
+        Returns:
+            ClassificationDatasetInterface instance.
+
+        """
+        dataset = cls(samples=[], metadata=metadata or {})
+        for image, label in pairs:
+            dataset.add_sample(image, label)
+        return dataset
+
+    @classmethod
+    def from_tensors(
+        cls,
+        images: "torch.Tensor",
+        labels: "torch.Tensor",
+        metadata: Dict[str, Any] | None = None,
+    ) -> "ClassificationDatasetInterface":
+        """
+        Create a dataset from image and label tensors.
+
+        Args:
+            images: Image tensor of shape (N, C, H, W).
+            labels: Label tensor of shape (N,).
+            metadata: Optional metadata dictionary.
+
+        Returns:
+            ClassificationDatasetInterface instance.
+
+        """
+        dataset = cls(samples=[], metadata=metadata or {})
+        # Convert tensors to numpy arrays and add samples
+        images_np = (images.cpu().numpy() * 255).astype(np.uint8)
+        labels_np = labels.cpu().numpy()
+
+        for i in range(len(labels)):
+            # Handle different tensor shapes
+            img = images_np[i]
+            if img.ndim == 3:  # (C, H, W) -> (H, W, C) or (H, W)
+                if img.shape[0] == 1:  # Grayscale
+                    img = img[0]  # (H, W)
+                else:  # RGB
+                    img = img.transpose(1, 2, 0)  # (H, W, C)
+            dataset.add_sample(img, int(labels_np[i]))
+
+        return dataset
+
+    def to_tensors(self) -> Tuple[List["torch.Tensor"], "torch.Tensor"]:
+        """
+        Convert dataset to tensors.
+
+        Returns:
+            Tuple of (list of image tensors, labels tensor).
+            Each image tensor has shape (C, H, W).
+            Images may have different sizes.
+
+        """
+        import torch
+
+        images_list = []
+        labels_list = []
+
+        for image, label in self.samples:
+            # Normalize to [0, 1]
+            image_float = image.astype(np.float32) / 255.0
+
+            # Handle grayscale vs RGB
+            if image_float.ndim == 2:
+                # Grayscale: (H, W) -> (1, H, W)
+                tensor = torch.from_numpy(image_float).unsqueeze(0)
+            else:
+                # RGB: (H, W, C) -> (C, H, W)
+                tensor = torch.from_numpy(image_float).permute(2, 0, 1)
+
+            images_list.append(tensor)
+            labels_list.append(label)
+
+        labels_tensor = torch.tensor(labels_list, dtype=torch.long)
+
+        return images_list, labels_tensor
+
+    def split(
+        self,
+        ratio: float = 0.8,
+        shuffle: bool = True,
+        random_seed: int | None = None,
+    ) -> Tuple["ClassificationDatasetInterface", "ClassificationDatasetInterface"]:
+        """
+        Split the dataset into two parts.
+
+        Args:
+            ratio: Ratio for the first split (default: 0.8 for 80/20 split).
+            shuffle: Whether to shuffle before splitting (default: True).
+            random_seed: Random seed for reproducibility.
+
+        Returns:
+            Tuple of two ClassificationDatasetInterface objects.
+
+        """
+        n = len(self)
+        indices = np.arange(n)
+
+        if shuffle:
+            rng = np.random.default_rng(random_seed)
+            rng.shuffle(indices)
+
+        split_idx = int(n * ratio)
+
+        train_indices = indices[:split_idx]
+        val_indices = indices[split_idx:]
+
+        train_dataset = ClassificationDatasetInterface(
+            samples=[self.samples[i] for i in train_indices],
+            metadata={**self.metadata, "split": "train"},
+        )
+
+        val_dataset = ClassificationDatasetInterface(
             samples=[self.samples[i] for i in val_indices],
             metadata={**self.metadata, "split": "val"},
         )
@@ -388,7 +610,7 @@ class ClassificationModelInterface(ABC):
     Minimum interface for an image classifier.
 
     Receives an image region and return a tuple of
-    (class_label, confidence), where class_label ∈ {0,1,2} and
+    (class_label, confidence), where class_label ∈ Z and
     confidence ∈ [0,1].
     """
 
@@ -418,6 +640,23 @@ class ClassificationModelInterface(ABC):
         """
         pass
 
+    @abstractmethod
+    def train(
+        self,
+        dataset: ClassificationDatasetInterface,
+    ) -> MetricsResultInterface:
+        """
+        Train the classification model on provided data.
+
+        Args:
+            dataset: The training dataset.
+
+        Returns:
+            MetricsResultInterface containing training metrics.
+
+        """
+        pass
+
 
 # ==============================================================================
 # Segmentation Model Interface
@@ -433,7 +672,7 @@ class SegmentationModelInterface(ABC):
     """
 
     @abstractmethod
-    def train(self, dataset: "DatasetInterface") -> MetricsResultInterface:
+    def train(self, dataset: "SegmentationDatasetInterface") -> MetricsResultInterface:
         """
         Train the model on the provided dataset.
 
@@ -447,7 +686,7 @@ class SegmentationModelInterface(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, dataset: "DatasetInterface") -> List[MaskPair]:
+    def evaluate(self, dataset: "SegmentationDatasetInterface") -> List[MaskPair]:
         """
         Evaluate the model on the provided dataset.
 
@@ -476,7 +715,10 @@ class DataAugmentatorInterface(ABC):
     """
 
     @abstractmethod
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self,
+        dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """
         Apply augmentation to the dataset.
 
@@ -489,7 +731,10 @@ class DataAugmentatorInterface(ABC):
         """
         pass
 
-    def __call__(self, dataset: DatasetInterface) -> DatasetInterface:
+    def __call__(
+        self,
+        dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Allow calling the augmentator as a function."""
         return self.augment(dataset)
 
@@ -516,8 +761,8 @@ class DataAugmentatorNodeInterface(ABC):
     @abstractmethod
     def process(
         self,
-        dataset: DatasetInterface,
-    ) -> List[Tuple[DatasetInterface, DatasetInterface]]:
+        dataset: SegmentationDatasetInterface,
+    ) -> List[Tuple[SegmentationDatasetInterface, SegmentationDatasetInterface]]:
         """
         Process the dataset and return a list of dataset pairs.
 
@@ -533,8 +778,8 @@ class DataAugmentatorNodeInterface(ABC):
 
     def __call__(
         self,
-        dataset: DatasetInterface,
-    ) -> List[Tuple[DatasetInterface, DatasetInterface]]:
+        dataset: SegmentationDatasetInterface,
+    ) -> List[Tuple[SegmentationDatasetInterface, SegmentationDatasetInterface]]:
         """Allow calling the node as a function."""
         return self.process(dataset)
 
@@ -561,7 +806,9 @@ class ModelNodeInterface(ABC):
     @abstractmethod
     def train(
         self,
-        dataset_pairs: List[Tuple[DatasetInterface, DatasetInterface]],
+        dataset_pairs: List[
+            Tuple[SegmentationDatasetInterface, SegmentationDatasetInterface]
+        ],
     ) -> List[List[MaskPair]]:
         """
         Train the model on the provided dataset pairs.
@@ -578,7 +825,9 @@ class ModelNodeInterface(ABC):
 
     def __call__(
         self,
-        dataset_pairs: List[Tuple[DatasetInterface, DatasetInterface]],
+        dataset_pairs: List[
+            Tuple[SegmentationDatasetInterface, SegmentationDatasetInterface]
+        ],
     ) -> List[List[MaskPair]]:
         """Allow calling the node as a function."""
         return self.train(dataset_pairs)

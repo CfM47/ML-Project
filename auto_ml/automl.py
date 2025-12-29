@@ -2,7 +2,7 @@ import copy
 from typing import Any, Dict, List, Optional
 
 from auto_ml.implementations import DataAugmentatorNode, EvaluatorNode, ModelNode
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import SegmentationDatasetInterface
 
 
 class AutoML:
@@ -18,7 +18,7 @@ class AutoML:
 
     def run_experiment(
         self,
-        dataset: DatasetInterface,
+        dataset: SegmentationDatasetInterface,
         augmentator_nodes: List[DataAugmentatorNode],
         model_nodes: List[ModelNode],
         evaluator_node: Optional[EvaluatorNode] = None,

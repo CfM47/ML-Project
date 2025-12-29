@@ -7,11 +7,11 @@ import numpy as np
 from auto_ml.interfaces import (
     DataAugmentatorInterface,
     DataAugmentatorNodeInterface,
-    DatasetInterface,
     EvaluatorInterface,
     EvaluatorNodeInterface,
     MaskPair,
     ModelNodeInterface,
+    SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
 
@@ -52,8 +52,8 @@ class DataAugmentatorNode(DataAugmentatorNodeInterface):
 
     def process(
         self,
-        dataset: DatasetInterface,
-    ) -> List[Tuple[DatasetInterface, DatasetInterface]]:
+        dataset: SegmentationDatasetInterface,
+    ) -> List[Tuple[SegmentationDatasetInterface, SegmentationDatasetInterface]]:
         """
         Process the dataset.
 
@@ -77,11 +77,11 @@ class DataAugmentatorNode(DataAugmentatorNodeInterface):
             val_indices = indices[split_idx:]
 
             # Create Datasets
-            train_dataset = DatasetInterface.from_pairs(
+            train_dataset = SegmentationDatasetInterface.from_pairs(
                 [dataset.samples[i] for i in train_indices],
                 metadata={**dataset.metadata, "split": "train", "fold": 0},
             )
-            val_dataset = DatasetInterface.from_pairs(
+            val_dataset = SegmentationDatasetInterface.from_pairs(
                 [dataset.samples[i] for i in val_indices],
                 metadata={**dataset.metadata, "split": "val", "fold": 0},
             )
@@ -106,11 +106,11 @@ class DataAugmentatorNode(DataAugmentatorNodeInterface):
                 train_indices_fold = indices[~val_mask]
 
                 # Create Datasets
-                train_dataset = DatasetInterface.from_pairs(
+                train_dataset = SegmentationDatasetInterface.from_pairs(
                     [dataset.samples[j] for j in train_indices_fold],
                     metadata={**dataset.metadata, "split": "train", "fold": i},
                 )
-                val_dataset = DatasetInterface.from_pairs(
+                val_dataset = SegmentationDatasetInterface.from_pairs(
                     [dataset.samples[j] for j in val_indices_fold],
                     metadata={**dataset.metadata, "split": "val", "fold": i},
                 )
@@ -151,7 +151,9 @@ class ModelNode(ModelNodeInterface):
 
     def train(
         self,
-        dataset_pairs: List[Tuple[DatasetInterface, DatasetInterface]],
+        dataset_pairs: List[
+            Tuple[SegmentationDatasetInterface, SegmentationDatasetInterface]
+        ],
     ) -> List[List[MaskPair]]:
         """
         Train the model on the provided dataset pairs.
