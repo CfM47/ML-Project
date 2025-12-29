@@ -166,7 +166,9 @@ def test_cnn_binary_classifier_training() -> None:
     )
 
     # Create binary training data
-    images, labels = create_binary_training_data(num_samples_per_class=50, image_size=32)
+    images, labels = create_binary_training_data(
+        num_samples_per_class=50, image_size=32,
+    )
 
     # Train the model
     final_loss = train_cnn_model(
@@ -194,7 +196,9 @@ def test_cnn_binary_classifier_training() -> None:
 
     # Verify that the model learned to distinguish the classes
     assert label_dark == 0, f"Expected dark region to be class 0, got {label_dark}"
-    assert label_bright == 1, f"Expected bright region to be class 1, got {label_bright}"
+    assert label_bright == 1, (
+        f"Expected bright region to be class 1, got {label_bright}"
+    )
 
     print("CNN binary classifier training test PASSED!")
 
@@ -223,7 +227,10 @@ def test_cnn_quadtree_binary_integration() -> None:
         device="cpu",
     )
 
-    images, labels = create_binary_training_data(num_samples_per_class=50, image_size=32)
+    images, labels = create_binary_training_data(
+        num_samples_per_class=50,
+        image_size=32,
+    )
     final_loss = train_cnn_model(
         model=cnn_model,
         images=images,
@@ -293,11 +300,17 @@ def test_cnn_quadtree_binary_integration() -> None:
     # Verify classifications
     assert top_left_class == 0, f"Top-left should be class 0, got {top_left_class}"
     assert top_right_class == 1, f"Top-right should be class 1, got {top_right_class}"
-    assert bottom_left_class == 1, f"Bottom-left should be class 1, got {bottom_left_class}"
-    assert bottom_right_class == 0, f"Bottom-right should be class 0, got {bottom_right_class}"
+    assert bottom_left_class == 1, (
+        f"Bottom-left should be class 1, got {bottom_left_class}"
+    )
+    assert bottom_right_class == 0, (
+        f"Bottom-right should be class 0, got {bottom_right_class}"
+    )
 
     # Verify full mask matches expected
-    assert np.array_equal(predicted_mask, expected_mask), "Predicted mask does not match expected mask"
+    assert np.array_equal(predicted_mask, expected_mask), (
+        "Predicted mask does not match expected mask"
+    )
 
     print("CNN + Quadtree segmentation integration test PASSED!")
 
@@ -322,7 +335,10 @@ def test_cnn_quadtree_deeper_recursion() -> None:
         device="cpu",
     )
 
-    images, labels = create_binary_training_data(num_samples_per_class=50, image_size=32)
+    images, labels = create_binary_training_data(
+        num_samples_per_class=50,
+        image_size=32,
+    )
     train_cnn_model(
         model=cnn_model,
         images=images,
@@ -341,11 +357,15 @@ def test_cnn_quadtree_deeper_recursion() -> None:
     for i in range(4):
         for j in range(4):
             if (i + j) % 2 == 0:
-                test_image[i * block_size : (i + 1) * block_size,
-                          j * block_size : (j + 1) * block_size] = 40  # Dark
+                test_image[
+                    i * block_size : (i + 1) * block_size,
+                    j * block_size : (j + 1) * block_size,
+                ] = 40  # Dark
             else:
-                test_image[i * block_size : (i + 1) * block_size,
-                          j * block_size : (j + 1) * block_size] = 220  # Bright
+                test_image[
+                    i * block_size : (i + 1) * block_size,
+                    j * block_size : (j + 1) * block_size,
+                ] = 220  # Bright
 
     # Create QuadtreeSegmentationModel with smaller min_region_size
     # This forces deeper recursion to classify the checkerboard pattern
@@ -369,11 +389,15 @@ def test_cnn_quadtree_deeper_recursion() -> None:
     for i in range(4):
         for j in range(4):
             if (i + j) % 2 == 0:
-                expected_mask[i * block_size : (i + 1) * block_size,
-                             j * block_size : (j + 1) * block_size] = 0  # Dark -> class 0
+                expected_mask[
+                    i * block_size : (i + 1) * block_size,
+                    j * block_size : (j + 1) * block_size,
+                ] = 0  # Dark -> class 0
             else:
-                expected_mask[i * block_size : (i + 1) * block_size,
-                             j * block_size : (j + 1) * block_size] = 1  # Bright -> class 1
+                expected_mask[
+                    i * block_size : (i + 1) * block_size,
+                    j * block_size : (j + 1) * block_size,
+                ] = 1  # Bright -> class 1
 
     # Verify at least the pattern type is correct (checkerboard)
     # Check a few specific blocks

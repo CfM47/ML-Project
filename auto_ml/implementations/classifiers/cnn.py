@@ -1,9 +1,11 @@
 from pathlib import Path
 from typing import Tuple
+
+import numpy as np
 import torch
+
 from auto_ml.interfaces import ClassificationModelInterface, ImageArray
 from auto_ml.models.cnn.model import CNNClassifier
-import numpy as np
 
 
 class CNNModel(ClassificationModelInterface):
