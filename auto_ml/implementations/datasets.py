@@ -6,14 +6,14 @@ from typing import Tuple
 import numpy as np
 from PIL import Image
 
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import SegmentationDatasetInterface
 
 
 def load_dataset_from_directories(
     input_dir: Path,
     target_dir: Path,
     target_size: Tuple[int, int] = (512, 512),
-) -> DatasetInterface:
+) -> SegmentationDatasetInterface:
     """
     Load dataset from input and target directories.
 
@@ -49,7 +49,7 @@ def load_dataset_from_directories(
         ],
     )
 
-    dataset = DatasetInterface()
+    dataset = SegmentationDatasetInterface()
 
     # Create valid pairs
     # Heuristic: Target stem should start with Input stem

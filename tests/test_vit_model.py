@@ -1,7 +1,7 @@
 import numpy as np
 
 from auto_ml.implementations import ViTModel
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import SegmentationDatasetInterface
 
 
 def test_vit() -> None:  # noqa: D103
@@ -12,7 +12,7 @@ def test_vit() -> None:  # noqa: D103
     image = np.random.randint(0, 255, (512, 512, 3), dtype=np.uint8)
     mask = np.random.randint(0, 3, (512, 512), dtype=np.uint8)
 
-    dataset = DatasetInterface()
+    dataset = SegmentationDatasetInterface()
     # Add enough samples for a batch
     for _ in range(4):
         dataset.add_sample(image, mask)

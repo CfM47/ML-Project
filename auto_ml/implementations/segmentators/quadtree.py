@@ -6,11 +6,11 @@ import numpy as np
 
 from auto_ml.interfaces import (
     ClassificationModelInterface,
-    DatasetInterface,
     ImageArray,
     MaskArray,
     MaskPair,
     MetricsResultInterface,
+    SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
 
@@ -47,7 +47,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         self.min_region_size = min_region_size
         self.max_depth = max_depth
 
-    def train(self, dataset: DatasetInterface) -> MetricsResultInterface:
+    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
         """
         Train the model on the provided dataset.
 
@@ -60,7 +60,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         """
         return MetricsResultInterface()
 
-    def evaluate(self, dataset: DatasetInterface) -> List[MaskPair]:
+    def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
         """
         Evaluate the model on a dataset.
 

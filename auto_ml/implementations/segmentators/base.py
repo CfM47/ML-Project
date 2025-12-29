@@ -5,13 +5,13 @@ from typing import Tuple
 import torch
 from torch.utils.data import Dataset
 
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import SegmentationDatasetInterface
 
 
 class InMemoryPyTorchDataset(Dataset):
     """Bridge between AutoML DatasetInterface and PyTorch Dataset."""
 
-    def __init__(self, dataset: DatasetInterface) -> None:
+    def __init__(self, dataset: SegmentationDatasetInterface) -> None:
         """Initialize the Dataset."""
         self.dataset = dataset
 
