@@ -28,7 +28,7 @@ lint-fix:
 # Type Checking
 typecheck:
 	@echo "Running Mypy..."
-	$(UV) run mypy src/ tests/
+	$(UV) run mypy auto_ml/ notebooks/ tests/
 	@echo "---------------"
 
 # ---------------------------------
