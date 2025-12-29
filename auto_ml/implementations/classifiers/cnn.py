@@ -217,10 +217,11 @@ class CNNModel(ClassificationModelInterface):
             correct = 0
             total = 0
 
-            # Process each size group
-            for size, indices in size_groups.items():
-                # Shuffle indices within each size group
-                perm = torch.randperm(len(indices))
+            # Process each size group in sorted order for determinism
+            for size in sorted(size_groups.keys()):
+                indices = size_groups[size]
+                # Shuffle indices within each size group using numpy for determinism
+                perm = np.random.permutation(len(indices))
                 shuffled_indices = [indices[i] for i in perm]
 
                 # Create batches
