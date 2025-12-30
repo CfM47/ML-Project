@@ -61,4 +61,3 @@ def test_swin() -> None:  # noqa: D103
         return
 
     print("VERIFICATION SUCCESSFUL!")
-

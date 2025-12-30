@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 
 from auto_ml.interfaces import ClassificationModelInterface, ImageArray
 from auto_ml.models.vit.classification import ViTClassification

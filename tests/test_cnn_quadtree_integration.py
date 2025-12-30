@@ -109,6 +109,7 @@ def test_cnn_binary_classifier_training() -> None:
     # Create binary training data
     images, labels = create_binary_training_data(
         num_samples_per_class=50,
+        image_size=32,
     )
 
     # Create dataset using the interface

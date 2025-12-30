@@ -105,11 +105,13 @@ def rotation_matrix(angle_degrees: float, center: Tuple[float, float]) -> np.nda
     cx, cy = center
 
     # Translation to origin -> Rotation -> Translation back
-    matrix = np.array([
-        [cos_theta, -sin_theta, cx - cx * cos_theta + cy * sin_theta],
-        [sin_theta, cos_theta, cy - cx * sin_theta - cy * cos_theta],
-        [0, 0, 1],
-    ])
+    matrix = np.array(
+        [
+            [cos_theta, -sin_theta, cx - cx * cos_theta + cy * sin_theta],
+            [sin_theta, cos_theta, cy - cx * sin_theta - cy * cos_theta],
+            [0, 0, 1],
+        ],
+    )
 
     return matrix
 
@@ -133,11 +135,13 @@ def scale_matrix(
     """
     cx, cy = center
 
-    matrix = np.array([
-        [scale_x, 0, cx * (1 - scale_x)],
-        [0, scale_y, cy * (1 - scale_y)],
-        [0, 0, 1],
-    ])
+    matrix = np.array(
+        [
+            [scale_x, 0, cx * (1 - scale_x)],
+            [0, scale_y, cy * (1 - scale_y)],
+            [0, 0, 1],
+        ],
+    )
 
     return matrix
 
@@ -154,8 +158,10 @@ def translation_matrix(tx: float, ty: float) -> np.ndarray:
         3x3 affine transformation matrix.
 
     """
-    return np.array([
-        [1, 0, tx],
-        [0, 1, ty],
-        [0, 0, 1],
-    ])
+    return np.array(
+        [
+            [1, 0, tx],
+            [0, 1, ty],
+            [0, 0, 1],
+        ],
+    )

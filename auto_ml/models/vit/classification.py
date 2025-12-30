@@ -3,7 +3,8 @@ import torch.nn as nn
 
 
 class ViTClassification(nn.Module):
-    """Vision Transformer Classifier for image classification.
+    """
+    Vision Transformer Classifier for image classification.
 
     Uses a CLS token approach where a learnable classification token is
     prepended to the patch sequence. The transformer processes all tokens,

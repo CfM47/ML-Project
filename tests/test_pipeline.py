@@ -63,4 +63,3 @@ def test_pipeline() -> None:  # noqa: D103
     assert "accuracy" in eval_results, "Should have accuracy result"
 
     print("\n=== PIPELINE VERIFICATION SUCCESSFUL! ===")
-

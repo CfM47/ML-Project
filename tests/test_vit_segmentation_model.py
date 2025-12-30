@@ -64,4 +64,3 @@ def test_vit() -> None:  # noqa: D103
         return
 
     print("VERIFICATION SUCCESSFUL!")
-
