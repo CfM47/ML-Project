@@ -29,6 +29,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
     def __init__(
         self,
         classifier: ClassificationModelInterface,
+        classifier_dataset_dir: Optional[Path],
         threshold: float,
         min_region_size: int = 1,
         max_depth: Optional[int] = None,
@@ -39,6 +40,10 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         Args:
             classifier: Region classifier implementing
                         ClassificationModelInterface.
+            classifier_dataset_dir: Directory containing dataset for training
+                                    the classifier. If None, assumes classifier
+                                    is already trained, will throw error if train()
+                                    is called.
             threshold: Minimum confidence required to accept a region.
             min_region_size: Minimum width or height to allow subdivision.
             max_depth: Optional maximum recursion depth.
@@ -48,6 +53,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         self.threshold = threshold
         self.min_region_size = min_region_size
         self.max_depth = max_depth
+        self.classifier_dataset_dir = classifier_dataset_dir
 
     def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
         """
@@ -60,8 +66,13 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             MetricsResultInterface containing training metrics.
 
         """
+        if self.classifier_dataset_dir is None:
+            raise RuntimeError(
+                "Classifier dataset directory not provided; cannot train classifier.",
+            )
+
         classifier_dataset = load_classification_dataset_from_dir(
-            Path("auto_ml/datasets/classification"),  # we probably need to change this
+            self.classifier_dataset_dir,
         )
 
         return self.classifier.train(classifier_dataset)

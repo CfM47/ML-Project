@@ -97,7 +97,11 @@ def test_quadtree_segmentation_init() -> None:
     """Test the initialization of QuadtreeSegmentationModel."""
     print("Initializing Verification for QuadtreeSegmentationModel initialization...")
     classifier = DummyClassifier()
-    model = QuadtreeSegmentationModel(classifier=classifier, threshold=0.7)
+    model = QuadtreeSegmentationModel(
+        classifier=classifier,
+        classifier_dataset_dir=None,
+        threshold=0.7,
+    )
 
     assert model.classifier == classifier
     assert model.threshold == 0.7
@@ -143,6 +147,7 @@ def test_quadtree_segmentation_evaluate() -> None:
     # Set min_region_size to allow clear quadrant segmentation, e.g., 256
     model = QuadtreeSegmentationModel(
         classifier=classifier,
+        classifier_dataset_dir=None,
         threshold=0.99,
         min_region_size=image_size // 2,  # 256
     )
@@ -178,6 +183,7 @@ def test__should_stop_recursion() -> None:
     classifier = DummyClassifier()
     model = QuadtreeSegmentationModel(
         classifier=classifier,
+        classifier_dataset_dir=None,
         threshold=0.7,
         min_region_size=10,
         max_depth=3,
@@ -216,6 +222,7 @@ def test__should_stop_recursion() -> None:
     # Case 6: max_depth is None, so depth should not stop recursion
     model_no_max_depth = QuadtreeSegmentationModel(
         classifier=classifier,
+        classifier_dataset_dir=None,
         threshold=0.7,
         min_region_size=10,
         max_depth=None,

@@ -199,6 +199,7 @@ def test_cnn_quadtree_binary_integration() -> None:
     print("Step 3: Creating QuadtreeSegmentationModel...")
     quadtree_model = QuadtreeSegmentationModel(
         classifier=cnn_model,
+        classifier_dataset_dir=None,
         threshold=1.0,  # Force subdivision (no confidence can be >= 1.0)
         min_region_size=256,  # Stop at quadrant level (512/2 = 256)
         max_depth=None,  # No depth limit
@@ -305,6 +306,7 @@ def test_cnn_quadtree_deeper_recursion() -> None:
     # This forces deeper recursion to classify the checkerboard pattern
     quadtree_model = QuadtreeSegmentationModel(
         classifier=cnn_model,
+        classifier_dataset_dir=None,
         threshold=0.99,  # High threshold to force recursion
         min_region_size=128,  # Stop at 128x128 level
         max_depth=2,  # Allow 2 levels of recursion (512 -> 256 -> 128)
