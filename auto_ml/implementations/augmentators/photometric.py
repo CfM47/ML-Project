@@ -5,7 +5,7 @@ import random
 import numpy as np
 from scipy import ndimage
 
-from auto_ml.interfaces import DataAugmentatorInterface, DatasetInterface
+from auto_ml.interfaces import DataAugmentatorInterface, SegmentationDatasetInterface
 
 
 class BrightnessAugmentator(DataAugmentatorInterface):
@@ -32,7 +32,9 @@ class BrightnessAugmentator(DataAugmentatorInterface):
         self.brightness_range = brightness_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random brightness adjustment to all images."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -46,7 +48,7 @@ class BrightnessAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "brightness"},
         )
@@ -77,7 +79,9 @@ class ContrastAugmentator(DataAugmentatorInterface):
         self.contrast_range = contrast_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random contrast adjustment to all images."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -98,7 +102,7 @@ class ContrastAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "contrast"},
         )
@@ -127,7 +131,9 @@ class GaussianNoiseAugmentator(DataAugmentatorInterface):
         self.noise_std_range = noise_std_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Add random Gaussian noise to all images."""
         rng = np.random.default_rng(self.random_seed)
         augmented_samples = []
@@ -148,7 +154,7 @@ class GaussianNoiseAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "gaussian_noise"},
         )
@@ -178,7 +184,9 @@ class GaussianBlurAugmentator(DataAugmentatorInterface):
         self.sigma_range = sigma_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random Gaussian blur to all images."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -202,7 +210,7 @@ class GaussianBlurAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "gaussian_blur"},
         )
@@ -233,7 +241,9 @@ class GammaAugmentator(DataAugmentatorInterface):
         self.gamma_range = gamma_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random gamma correction to all images."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -253,7 +263,7 @@ class GammaAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "gamma"},
         )

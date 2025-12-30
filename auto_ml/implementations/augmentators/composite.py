@@ -3,7 +3,7 @@
 import random
 from typing import List
 
-from auto_ml.interfaces import DataAugmentatorInterface, DatasetInterface
+from auto_ml.interfaces import DataAugmentatorInterface, SegmentationDatasetInterface
 
 
 class SequentialAugmentator(DataAugmentatorInterface):
@@ -23,7 +23,9 @@ class SequentialAugmentator(DataAugmentatorInterface):
         """
         self.augmentators = augmentators
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply all augmentations sequentially."""
         result = dataset
 
@@ -63,7 +65,9 @@ class RandomChoiceAugmentator(DataAugmentatorInterface):
         self.augmentators = augmentators
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply one randomly selected augmentation to each sample."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -73,7 +77,7 @@ class RandomChoiceAugmentator(DataAugmentatorInterface):
             augmentator = rng.choice(self.augmentators)
 
             # Create single-sample dataset
-            temp_dataset = DatasetInterface.from_pairs(
+            temp_dataset = SegmentationDatasetInterface.from_pairs(
                 [(image, mask)],
                 metadata=dataset.metadata,
             )
@@ -85,7 +89,7 @@ class RandomChoiceAugmentator(DataAugmentatorInterface):
             aug_image, aug_mask = aug_dataset.samples[0]
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "random_choice"},
         )
@@ -117,7 +121,9 @@ class RandomApplyAugmentator(DataAugmentatorInterface):
         self.probability = probability
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply augmentation to samples with given probability."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -125,7 +131,7 @@ class RandomApplyAugmentator(DataAugmentatorInterface):
         for image, mask in dataset.samples:
             if rng.random() < self.probability:
                 # Apply augmentation
-                temp_dataset = DatasetInterface.from_pairs(
+                temp_dataset = SegmentationDatasetInterface.from_pairs(
                     [(image, mask)],
                     metadata=dataset.metadata,
                 )
@@ -136,7 +142,7 @@ class RandomApplyAugmentator(DataAugmentatorInterface):
                 # Keep original
                 augmented_samples.append((image, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "random_apply"},
         )
@@ -176,7 +182,9 @@ class OneOfAugmentator(DataAugmentatorInterface):
 
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply one weighted-random augmentation to each sample."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -190,7 +198,7 @@ class OneOfAugmentator(DataAugmentatorInterface):
             )[0]
 
             # Create single-sample dataset
-            temp_dataset = DatasetInterface.from_pairs(
+            temp_dataset = SegmentationDatasetInterface.from_pairs(
                 [(image, mask)],
                 metadata=dataset.metadata,
             )
@@ -202,7 +210,7 @@ class OneOfAugmentator(DataAugmentatorInterface):
             aug_image, aug_mask = aug_dataset.samples[0]
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "one_of"},
         )
@@ -232,7 +240,9 @@ class MultiplyDatasetAugmentator(DataAugmentatorInterface):
         self.augmentators = augmentators
         self.include_original = include_original
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Create multiple augmented copies of the dataset."""
         all_samples = []
 
@@ -247,7 +257,7 @@ class MultiplyDatasetAugmentator(DataAugmentatorInterface):
 
         multiplier = len(self.augmentators) + (1 if self.include_original else 0)
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             all_samples,
             metadata={
                 **dataset.metadata,

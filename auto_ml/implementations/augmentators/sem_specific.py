@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from scipy import ndimage
 
-from auto_ml.interfaces import DataAugmentatorInterface, DatasetInterface
+from auto_ml.interfaces import DataAugmentatorInterface, SegmentationDatasetInterface
 
 
 class ElasticDeformationAugmentator(DataAugmentatorInterface):
@@ -37,7 +37,9 @@ class ElasticDeformationAugmentator(DataAugmentatorInterface):
         self.sigma = sigma
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply elastic deformation to all samples."""
         rng = np.random.default_rng(self.random_seed)
         augmented_samples = []
@@ -50,8 +52,8 @@ class ElasticDeformationAugmentator(DataAugmentatorInterface):
             dy = rng.uniform(-1, 1, (h, w)) * self.alpha
 
             # Smooth the displacement fields
-            dx = ndimage.gaussian_filter(dx, self.sigma, mode='constant', cval=0)
-            dy = ndimage.gaussian_filter(dy, self.sigma, mode='constant', cval=0)
+            dx = ndimage.gaussian_filter(dx, self.sigma, mode="constant", cval=0)
+            dy = ndimage.gaussian_filter(dy, self.sigma, mode="constant", cval=0)
 
             # Create meshgrid for remapping
             x, y = np.meshgrid(np.arange(w), np.arange(h))
@@ -87,7 +89,7 @@ class ElasticDeformationAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image.astype(np.uint8), aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "elastic_deformation"},
         )
@@ -117,7 +119,9 @@ class AdaptiveHistogramEqualizationAugmentator(DataAugmentatorInterface):
         self.clip_limit = clip_limit
         self.tile_grid_size = tile_grid_size
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply CLAHE to all images."""
         clahe = cv2.createCLAHE(
             clipLimit=self.clip_limit,
@@ -140,7 +144,7 @@ class AdaptiveHistogramEqualizationAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image.astype(np.uint8), mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "clahe"},
         )
@@ -176,7 +180,9 @@ class ChargingArtifactAugmentator(DataAugmentatorInterface):
         self.spot_size_range = spot_size_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Add charging artifacts to all images."""
         rng = random.Random(self.random_seed)
 
@@ -201,17 +207,17 @@ class ChargingArtifactAugmentator(DataAugmentatorInterface):
                 intensity = rng.uniform(*self.intensity_range)
 
                 # Create Gaussian spot mask
-                y, x = np.ogrid[-cy:h-cy, -cx:w-cx]
-                distance = np.sqrt(x*x + y*y)
-                spot_mask = np.exp(-(distance**2) / (2 * (radius/2)**2))
+                y, x = np.ogrid[-cy : h - cy, -cx : w - cx]
+                distance = np.sqrt(x * x + y * y)
+                spot_mask = np.exp(-(distance**2) / (2 * (radius / 2) ** 2))
 
                 # Apply charging effect
                 if image.ndim == 2:
                     aug_image = aug_image * (1 + (intensity - 1) * spot_mask)
                 else:
                     for c in range(image.shape[2]):
-                        aug_image[:, :, c] = (
-                            aug_image[:, :, c] * (1 + (intensity - 1) * spot_mask)
+                        aug_image[:, :, c] = aug_image[:, :, c] * (
+                            1 + (intensity - 1) * spot_mask
                         )
 
             # Clip and convert back
@@ -219,7 +225,7 @@ class ChargingArtifactAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image_uint8, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "charging_artifact"},
         )
@@ -255,7 +261,9 @@ class ScanLineNoiseAugmentator(DataAugmentatorInterface):
         self.direction = direction
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Add scan line noise to all images."""
         rng = random.Random(self.random_seed)
         np_rng = np.random.default_rng(self.random_seed)
@@ -294,7 +302,7 @@ class ScanLineNoiseAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image_uint8, mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "scan_line_noise"},
         )
