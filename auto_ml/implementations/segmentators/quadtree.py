@@ -58,7 +58,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             MetricsResultInterface containing training metrics.
 
         """
-        return MetricsResultInterface()
+        return self.classifier.train(dataset)
 
     def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
         """
