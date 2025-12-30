@@ -1005,6 +1005,8 @@ def plot_results(
 
 
 def main(
+    data_dir: Optional[str] = None,
+    labels_file: str = "Labels.csv",
     patience: int = 5,
     n_folds: int = 5,
     max_epochs: Optional[int] = None,
@@ -1021,6 +1023,8 @@ def main(
     Run validation and return the results graph.
 
     Args:
+        data_dir: Path to the dataset directory. If None, uses default location.
+        labels_file: Name of the labels CSV file.
         patience: Number of epochs without improvement before early stopping.
         n_folds: Number of folds for cross-validation.
         max_epochs: Maximum number of epochs per fold. If None, train until patience
@@ -1038,7 +1042,15 @@ def main(
         Matplotlib Figure with the validation results.
 
     """
+    # Convert data_dir to Path if provided
+    if data_dir is not None:
+        data_dir_path = Path(data_dir)
+    else:
+        data_dir_path = _PROJECT_ROOT / "data/sem_images/raw"
+
     config = ValidationConfig(
+        data_dir=data_dir_path,
+        labels_file=labels_file,
         patience=patience,
         n_folds=n_folds,
         max_epochs=max_epochs,

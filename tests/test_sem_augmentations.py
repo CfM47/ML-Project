@@ -8,10 +8,10 @@ from auto_ml.implementations import (
     ElasticDeformationAugmentator,
     ScanLineNoiseAugmentator,
 )
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import SegmentationDatasetInterface
 
 
-class SimpleDataset(DatasetInterface):
+class SimpleDataset(SegmentationDatasetInterface):
     """Simple dataset for testing."""
 
     def __init__(self, samples: list[tuple[np.ndarray, np.ndarray]]) -> None:

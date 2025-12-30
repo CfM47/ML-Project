@@ -1,7 +1,7 @@
 import numpy as np
 
 from auto_ml.implementations import DataAugmentatorNode, IdentityAugmentator
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import SegmentationDatasetInterface
 
 
 def test_augmentator() -> None:  # noqa: D103
@@ -12,7 +12,7 @@ def test_augmentator() -> None:  # noqa: D103
     image = np.zeros((512, 512, 3), dtype=np.uint8)  # Dummy image
     mask = np.zeros((512, 512), dtype=np.uint8)  # Dummy mask
 
-    dataset = DatasetInterface()
+    dataset = SegmentationDatasetInterface()
     for _ in range(100):
         dataset.add_sample(image, mask)
 

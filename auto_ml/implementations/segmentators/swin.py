@@ -10,9 +10,9 @@ from torch.utils.data import DataLoader
 
 from auto_ml.implementations.segmentators.base import InMemoryPyTorchDataset
 from auto_ml.interfaces import (
-    DatasetInterface,
     MaskPair,
     MetricsResultInterface,
+    SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
 from auto_ml.models.swin.model import SwinSegmentation
@@ -69,7 +69,7 @@ class SwinModel(SegmentationModelInterface):
             channels=1,
         ).to(self.device)
 
-    def train(self, dataset: DatasetInterface) -> MetricsResultInterface:
+    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
         """Train the model."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(
@@ -117,7 +117,7 @@ class SwinModel(SegmentationModelInterface):
             additional_metrics={"epochs_trained": self.epochs},
         )
 
-    def evaluate(self, dataset: DatasetInterface) -> List[MaskPair]:
+    def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
         """Evaluate the model and return predicted/real mask pairs."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(pytorch_dataset, batch_size=1, shuffle=False)

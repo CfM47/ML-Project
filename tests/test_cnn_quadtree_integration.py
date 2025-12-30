@@ -8,12 +8,13 @@ to perform segmentation and verify expected results.
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
 
 from auto_ml.implementations import QuadtreeSegmentationModel
 from auto_ml.implementations.classifiers.cnn import CNNModel
-from auto_ml.interfaces import DatasetInterface
+from auto_ml.interfaces import (
+    ClassificationDatasetInterface,
+    SegmentationDatasetInterface,
+)
 
 
 def set_deterministic_seed(seed: int = 42) -> None:
@@ -29,125 +30,65 @@ def set_deterministic_seed(seed: int = 42) -> None:
 
 def create_binary_training_data(
     num_samples_per_class: int = 50,
-    image_size: int = 32,
-) -> tuple[torch.Tensor, torch.Tensor]:
+    min_size: int = 32,
+    max_size: int = 256,
+) -> tuple[list[np.ndarray], list[int]]:
     """
     Create deterministic training data for binary classification (2 classes).
 
     Class 0: Dark images (low intensity 0-80)
     Class 1: Bright images (high intensity 180-255)
 
-    This simpler binary classification is more reliable for testing.
+    Generates images of varying sizes to help the model generalize across scales.
 
     Args:
         num_samples_per_class: Number of samples per class.
-        image_size: Size of the square images.
+        min_size: Minimum image size.
+        max_size: Maximum image size.
 
     Returns:
-        Tuple of (images tensor, labels tensor).
+        Tuple of (images list, labels list).
 
     """
     images = []
     labels = []
 
+    rng = np.random.RandomState(42)
+
+    # Generate varied sizes between min_size and max_size
+    sizes = [32, 64, 128, 256]
+
     # Class 0: Dark images (intensity range 0-80)
     for i in range(num_samples_per_class):
+        size = sizes[i % len(sizes)]
         # Use different base intensities for variety
         base_intensity = 20 + (i % 10) * 5  # 20, 25, 30, ..., 65
-        img = np.full((image_size, image_size), base_intensity, dtype=np.float32)
+        img = np.full((size, size), base_intensity, dtype=np.uint8)
         # Add small structured pattern
-        x, y = np.meshgrid(np.arange(image_size), np.arange(image_size))
-        pattern = 10 * np.sin((x + y) * 0.2 + i * 0.1)
-        img = img + pattern
-        img = np.clip(img, 0, 80).astype(np.float32) / 255.0
+        x, y = np.meshgrid(np.arange(size), np.arange(size))
+        pattern = (10 * np.sin((x + y) * 0.2 / size * 32 + i * 0.1)).astype(np.int16)
+        img = np.clip(img.astype(np.int16) + pattern, 0, 80).astype(np.uint8)
         images.append(img)
         labels.append(0)
 
     # Class 1: Bright images (intensity range 180-255)
     for i in range(num_samples_per_class):
+        size = sizes[i % len(sizes)]
         base_intensity = 200 + (i % 10) * 5  # 200, 205, 210, ..., 245
-        img = np.full((image_size, image_size), base_intensity, dtype=np.float32)
+        img = np.full((size, size), base_intensity, dtype=np.uint8)
         # Add different pattern
-        x, y = np.meshgrid(np.arange(image_size), np.arange(image_size))
-        pattern = 10 * np.cos((x - y) * 0.2 + i * 0.1)
-        img = img + pattern
-        img = np.clip(img, 180, 255).astype(np.float32) / 255.0
+        x, y = np.meshgrid(np.arange(size), np.arange(size))
+        pattern = (10 * np.cos((x - y) * 0.2 / size * 32 + i * 0.1)).astype(np.int16)
+        img = np.clip(img.astype(np.int16) + pattern, 180, 255).astype(np.uint8)
         images.append(img)
         labels.append(1)
 
     # Shuffle deterministically
-    rng = np.random.RandomState(42)
-    indices = np.arange(len(images))
-    rng.shuffle(indices)
+    indices = rng.permutation(len(labels))
     images = [images[i] for i in indices]
     labels = [labels[i] for i in indices]
 
-    # Convert to tensors: (N, 1, H, W)
-    images_tensor = torch.tensor(np.array(images), dtype=torch.float32).unsqueeze(1)
-    labels_tensor = torch.tensor(labels, dtype=torch.long)
-
-    return images_tensor, labels_tensor
-
-
-def train_cnn_model(
-    model: CNNModel,
-    images: torch.Tensor,
-    labels: torch.Tensor,
-    epochs: int = 10,
-    batch_size: int = 8,
-    learning_rate: float = 0.01,
-) -> float:
-    """
-    Train the CNN model on the provided data.
-
-    Args:
-        model: The CNNModel to train.
-        images: Training images tensor.
-        labels: Training labels tensor.
-        epochs: Number of training epochs.
-        batch_size: Batch size for training.
-        learning_rate: Learning rate.
-
-    Returns:
-        Final training loss.
-
-    """
-    # Set model to training mode
-    model.model.train()
-
-    # Create data loader
-    dataset = TensorDataset(images.to(model.device), labels.to(model.device))
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-    # Setup training
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.model.parameters(), lr=learning_rate)
-
-    final_loss = 0.0
-
-    for epoch in range(epochs):
-        epoch_loss = 0.0
-        correct = 0
-        total = 0
-
-        for batch_images, batch_labels in dataloader:
-            optimizer.zero_grad()
-            outputs = model.model(batch_images, return_logits=True)
-            loss = criterion(outputs, batch_labels)
-            loss.backward()
-            optimizer.step()
-
-            epoch_loss += loss.item() * batch_images.size(0)
-            _, predicted = outputs.max(1)
-            correct += predicted.eq(batch_labels).sum().item()
-            total += batch_labels.size(0)
-
-        final_loss = epoch_loss / total
-
-    # Set model back to eval mode
-    model.model.eval()
-
-    return final_loss
+    return images, labels
 
 
 def test_cnn_binary_classifier_training() -> None:
@@ -167,21 +108,22 @@ def test_cnn_binary_classifier_training() -> None:
 
     # Create binary training data
     images, labels = create_binary_training_data(
-        num_samples_per_class=50, image_size=32,
+        num_samples_per_class=50,
     )
 
-    # Train the model
-    final_loss = train_cnn_model(
-        model=cnn_model,
-        images=images,
-        labels=labels,
-        epochs=20,
-        batch_size=16,
-        learning_rate=0.005,
+    # Create dataset using the interface
+    dataset = ClassificationDatasetInterface()
+    for img, lbl in zip(images, labels):
+        dataset.add_sample(img, lbl)
+
+    # Train the model using the interface method
+    metrics = cnn_model.train(
+        dataset=dataset,
     )
 
-    print(f"Final training loss: {final_loss:.4f}")
-    assert final_loss < 0.5, f"Training loss should decrease, got {final_loss}"
+    print(f"Final training loss: {metrics.loss:.4f}")
+    print(f"Final training accuracy: {metrics.accuracy:.4f}")
+    assert metrics.loss < 0.5, f"Training loss should decrease, got {metrics.loss}"
 
     # Test classification on representative samples
     # Dark region (class 0) - use intensity ~40
@@ -229,17 +171,14 @@ def test_cnn_quadtree_binary_integration() -> None:
 
     images, labels = create_binary_training_data(
         num_samples_per_class=50,
-        image_size=32,
     )
-    final_loss = train_cnn_model(
-        model=cnn_model,
-        images=images,
-        labels=labels,
-        epochs=20,
-        batch_size=16,
-        learning_rate=0.005,
+    dataset = ClassificationDatasetInterface()
+    for img, lbl in zip(images, labels):
+        dataset.add_sample(img, lbl)
+    metrics = cnn_model.train(
+        dataset=dataset,
     )
-    print(f"Training complete. Final loss: {final_loss:.4f}")
+    print(f"Training complete. Final loss: {metrics.loss:.4f}")
 
     # 2. Create test image with 4 quadrants (alternating dark and bright)
     print("Step 2: Creating test image with 4 quadrants...")
@@ -260,6 +199,7 @@ def test_cnn_quadtree_binary_integration() -> None:
     print("Step 3: Creating QuadtreeSegmentationModel...")
     quadtree_model = QuadtreeSegmentationModel(
         classifier=cnn_model,
+        classifier_dataset_dir=None,
         threshold=1.0,  # Force subdivision (no confidence can be >= 1.0)
         min_region_size=256,  # Stop at quadrant level (512/2 = 256)
         max_depth=None,  # No depth limit
@@ -268,10 +208,10 @@ def test_cnn_quadtree_binary_integration() -> None:
     # 4. Create dataset and evaluate
     print("Step 4: Running segmentation...")
     dummy_mask = np.zeros((image_size, image_size), dtype=np.uint8)
-    dataset = DatasetInterface()
-    dataset.add_sample(test_image, dummy_mask)
+    seg_dataset = SegmentationDatasetInterface()
+    seg_dataset.add_sample(test_image, dummy_mask)
 
-    mask_pairs = quadtree_model.evaluate(dataset)
+    mask_pairs = quadtree_model.evaluate(seg_dataset)
 
     assert len(mask_pairs) == 1, f"Expected 1 mask pair, got {len(mask_pairs)}"
     predicted_mask, _ = mask_pairs[0]
@@ -337,16 +277,11 @@ def test_cnn_quadtree_deeper_recursion() -> None:
 
     images, labels = create_binary_training_data(
         num_samples_per_class=50,
-        image_size=32,
     )
-    train_cnn_model(
-        model=cnn_model,
-        images=images,
-        labels=labels,
-        epochs=20,
-        batch_size=16,
-        learning_rate=0.005,
-    )
+    dataset = ClassificationDatasetInterface()
+    for img, lbl in zip(images, labels):
+        dataset.add_sample(img, lbl)
+    cnn_model.train(dataset=dataset)
 
     # Create test image with checkerboard pattern at 128x128 level
     image_size = 512
@@ -371,6 +306,7 @@ def test_cnn_quadtree_deeper_recursion() -> None:
     # This forces deeper recursion to classify the checkerboard pattern
     quadtree_model = QuadtreeSegmentationModel(
         classifier=cnn_model,
+        classifier_dataset_dir=None,
         threshold=0.99,  # High threshold to force recursion
         min_region_size=128,  # Stop at 128x128 level
         max_depth=2,  # Allow 2 levels of recursion (512 -> 256 -> 128)
@@ -378,10 +314,10 @@ def test_cnn_quadtree_deeper_recursion() -> None:
 
     # Evaluate
     dummy_mask = np.zeros((image_size, image_size), dtype=np.uint8)
-    dataset = DatasetInterface()
-    dataset.add_sample(test_image, dummy_mask)
+    seg_dataset = SegmentationDatasetInterface()
+    seg_dataset.add_sample(test_image, dummy_mask)
 
-    mask_pairs = quadtree_model.evaluate(dataset)
+    mask_pairs = quadtree_model.evaluate(seg_dataset)
     predicted_mask, _ = mask_pairs[0]
 
     # Build expected checkerboard mask

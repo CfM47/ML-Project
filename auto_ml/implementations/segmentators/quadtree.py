@@ -1,16 +1,18 @@
 """Quadtree-based segmentation model implementation."""
 
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
 
+from auto_ml.implementations.datasets import load_classification_dataset_from_dir
 from auto_ml.interfaces import (
     ClassificationModelInterface,
-    DatasetInterface,
     ImageArray,
     MaskArray,
     MaskPair,
     MetricsResultInterface,
+    SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
 
@@ -27,6 +29,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
     def __init__(
         self,
         classifier: ClassificationModelInterface,
+        classifier_dataset_dir: Optional[Path],
         threshold: float,
         min_region_size: int = 1,
         max_depth: Optional[int] = None,
@@ -37,6 +40,10 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         Args:
             classifier: Region classifier implementing
                         ClassificationModelInterface.
+            classifier_dataset_dir: Directory containing dataset for training
+                                    the classifier. If None, assumes classifier
+                                    is already trained, will throw error if train()
+                                    is called.
             threshold: Minimum confidence required to accept a region.
             min_region_size: Minimum width or height to allow subdivision.
             max_depth: Optional maximum recursion depth.
@@ -46,8 +53,9 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         self.threshold = threshold
         self.min_region_size = min_region_size
         self.max_depth = max_depth
+        self.classifier_dataset_dir = classifier_dataset_dir
 
-    def train(self, dataset: DatasetInterface) -> MetricsResultInterface:
+    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
         """
         Train the model on the provided dataset.
 
@@ -58,9 +66,18 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             MetricsResultInterface containing training metrics.
 
         """
-        return MetricsResultInterface()
+        if self.classifier_dataset_dir is None:
+            raise RuntimeError(
+                "Classifier dataset directory not provided; cannot train classifier.",
+            )
 
-    def evaluate(self, dataset: DatasetInterface) -> List[MaskPair]:
+        classifier_dataset = load_classification_dataset_from_dir(
+            self.classifier_dataset_dir,
+        )
+
+        return self.classifier.train(classifier_dataset)
+
+    def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
         """
         Evaluate the model on a dataset.
 

@@ -12,7 +12,7 @@ from auto_ml.implementations.augmentators.base import (
     scale_matrix,
     translation_matrix,
 )
-from auto_ml.interfaces import DataAugmentatorInterface, DatasetInterface
+from auto_ml.interfaces import DataAugmentatorInterface, SegmentationDatasetInterface
 
 
 class RotationAugmentator(DataAugmentatorInterface):
@@ -39,7 +39,9 @@ class RotationAugmentator(DataAugmentatorInterface):
         self.angle_range = angle_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random rotation to all samples in the dataset."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -61,7 +63,7 @@ class RotationAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "rotation"},
         )
@@ -70,7 +72,9 @@ class RotationAugmentator(DataAugmentatorInterface):
 class HorizontalFlipAugmentator(DataAugmentatorInterface):
     """Flip images and masks horizontally."""
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self, dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply horizontal flip to all samples."""
         augmented_samples = []
 
@@ -79,7 +83,7 @@ class HorizontalFlipAugmentator(DataAugmentatorInterface):
             aug_mask = np.fliplr(mask)
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "horizontal_flip"},
         )
@@ -88,7 +92,10 @@ class HorizontalFlipAugmentator(DataAugmentatorInterface):
 class VerticalFlipAugmentator(DataAugmentatorInterface):
     """Flip images and masks vertically."""
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self,
+        dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply vertical flip to all samples."""
         augmented_samples = []
 
@@ -97,7 +104,7 @@ class VerticalFlipAugmentator(DataAugmentatorInterface):
             aug_mask = np.flipud(mask)
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "vertical_flip"},
         )
@@ -127,7 +134,10 @@ class ScaleAugmentator(DataAugmentatorInterface):
         self.scale_range = scale_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self,
+        dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random scaling to all samples."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -149,7 +159,7 @@ class ScaleAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "scale"},
         )
@@ -179,7 +189,10 @@ class TranslationAugmentator(DataAugmentatorInterface):
         self.translate_range = translate_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self,
+        dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random translation to all samples."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -203,7 +216,7 @@ class TranslationAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "translation"},
         )
@@ -233,7 +246,10 @@ class RandomCropAugmentator(DataAugmentatorInterface):
         self.crop_size_range = crop_size_range
         self.random_seed = random_seed
 
-    def augment(self, dataset: DatasetInterface) -> DatasetInterface:
+    def augment(
+        self,
+        dataset: SegmentationDatasetInterface,
+    ) -> SegmentationDatasetInterface:
         """Apply random crop to all samples."""
         rng = random.Random(self.random_seed)
         augmented_samples = []
@@ -252,11 +268,11 @@ class RandomCropAugmentator(DataAugmentatorInterface):
 
             # Crop
             if image.ndim == 2:
-                cropped_image = image[top:top + crop_h, left:left + crop_w]
+                cropped_image = image[top : top + crop_h, left : left + crop_w]
             else:
-                cropped_image = image[top:top + crop_h, left:left + crop_w, :]
+                cropped_image = image[top : top + crop_h, left : left + crop_w, :]
 
-            cropped_mask = mask[top:top + crop_h, left:left + crop_w]
+            cropped_mask = mask[top : top + crop_h, left : left + crop_w]
 
             # Resize back to original size
             from scipy import ndimage
@@ -289,7 +305,7 @@ class RandomCropAugmentator(DataAugmentatorInterface):
 
             augmented_samples.append((aug_image, aug_mask))
 
-        return DatasetInterface.from_pairs(
+        return SegmentationDatasetInterface.from_pairs(
             augmented_samples,
             metadata={**dataset.metadata, "augmentation": "random_crop"},
         )

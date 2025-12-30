@@ -1,10 +1,16 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
+import torch.nn as nn
 
-from auto_ml.interfaces import ClassificationModelInterface, ImageArray
+from auto_ml.interfaces import (
+    ClassificationDatasetInterface,
+    ClassificationModelInterface,
+    ImageArray,
+    MetricsResultInterface,
+)
 from auto_ml.models.cnn.model import CNNClassifier
 
 
@@ -23,6 +29,9 @@ class CNNModel(ClassificationModelInterface):
         base_filters: int = 32,
         dropout: float = 0.5,
         device: str = "auto",
+        train_epochs: int = 10,
+        train_batch_size: int = 16,
+        train_learning_rate: float = 0.01,
     ) -> None:
         """
         Initialize the CNN Model.
@@ -33,10 +42,16 @@ class CNNModel(ClassificationModelInterface):
             base_filters: Base number of filters (doubled at each block).
             dropout: Dropout rate before final classification layer.
             device: Device to run the model on ("auto", "cuda", "mps", "cpu").
+            train_epochs: Number of training epochs.
+            train_batch_size: Training batch size.
+            train_learning_rate: Learning rate for training.
 
         """
         self.num_classes = num_classes
         self.channels = channels
+        self.train_epochs = train_epochs
+        self.train_batch_size = train_batch_size
+        self.train_learning_rate = train_learning_rate
 
         if device == "auto":
             self.device = (
@@ -154,3 +169,97 @@ class CNNModel(ClassificationModelInterface):
 
         """
         torch.save(self.model.state_dict(), path)
+
+    def train(
+        self,
+        dataset: ClassificationDatasetInterface,
+    ) -> MetricsResultInterface:
+        """
+        Train the CNN model on provided data.
+
+        Train the CNN model on the provided dataset. Handles variable-sized images
+        by processing them individually.
+
+        Args:
+            dataset: The training dataset.
+
+        Returns:
+            MetricsResultInterface containing training metrics.
+
+        """
+        # Set model to training mode
+        self.model.train()
+
+        # Convert dataset to tensors (returns list of tensors + labels)
+        images_list, labels_tensor = dataset.to_tensors()
+
+        # Group images by size for batching
+        size_groups: Dict[Tuple[int, int], List[int]] = {}
+        for idx, img in enumerate(images_list):
+            size = (img.shape[1], img.shape[2])  # (H, W)
+            if size not in size_groups:
+                size_groups[size] = []
+            size_groups[size].append(idx)
+
+        # Setup training
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(
+            self.model.parameters(),
+            lr=self.train_learning_rate,
+        )
+
+        final_loss = 0.0
+        final_accuracy = 0.0
+
+        # Train on grouped batches
+        for epoch in range(self.train_epochs):
+            epoch_loss = 0.0
+            correct = 0
+            total = 0
+
+            # Process each size group in sorted order for determinism
+            for size in sorted(size_groups.keys()):
+                indices = size_groups[size]
+                # Shuffle indices within each size group using numpy for determinism
+                perm = np.random.permutation(len(indices))
+                shuffled_indices = [indices[i] for i in perm]
+
+                # Create batches
+                for batch_start in range(
+                    0,
+                    len(shuffled_indices),
+                    self.train_batch_size,
+                ):
+                    batch_indices = shuffled_indices[
+                        batch_start : batch_start + self.train_batch_size
+                    ]
+
+                    # Stack images of same size into batch
+                    batch_images = torch.stack(
+                        [images_list[i] for i in batch_indices],
+                    ).to(self.device)
+                    batch_labels = torch.tensor(
+                        [labels_tensor[i] for i in batch_indices],
+                        dtype=torch.long,
+                    ).to(self.device)
+
+                    optimizer.zero_grad()
+                    outputs = self.model(batch_images, return_logits=True)
+                    loss = criterion(outputs, batch_labels)
+                    loss.backward()
+                    optimizer.step()
+
+                    epoch_loss += loss.item() * batch_images.size(0)
+                    _, predicted = outputs.max(1)
+                    correct += predicted.eq(batch_labels).sum().item()
+                    total += batch_labels.size(0)
+
+            final_loss = epoch_loss / total if total > 0 else 0.0
+            final_accuracy = correct / total if total > 0 else 0.0
+
+        # Set model back to eval mode
+        self.model.eval()
+        return MetricsResultInterface(
+            accuracy=final_accuracy,
+            loss=final_loss,
+        )

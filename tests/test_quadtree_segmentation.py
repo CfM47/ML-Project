@@ -2,10 +2,11 @@ import numpy as np
 
 from auto_ml.implementations import QuadtreeSegmentationModel
 from auto_ml.interfaces import (
+    ClassificationDatasetInterface,
     ClassificationModelInterface,
-    DatasetInterface,
     ImageArray,
     MetricsResultInterface,
+    SegmentationDatasetInterface,
 )
 
 
@@ -77,11 +78,17 @@ class DummyClassifier(ClassificationModelInterface):
 
         return class_label, confidence
 
-    def train(self, dataset: DatasetInterface) -> MetricsResultInterface:
+    def train(
+        self,
+        dataset: ClassificationDatasetInterface,
+    ) -> MetricsResultInterface:
         """Train the model on the provided dataset."""
         return MetricsResultInterface()
 
-    def evaluate(self, dataset: DatasetInterface) -> MetricsResultInterface:
+    def evaluate(
+        self,
+        dataset: ClassificationDatasetInterface,
+    ) -> MetricsResultInterface:
         """Evaluate the model on the provided dataset."""
         return MetricsResultInterface()
 
@@ -90,7 +97,11 @@ def test_quadtree_segmentation_init() -> None:
     """Test the initialization of QuadtreeSegmentationModel."""
     print("Initializing Verification for QuadtreeSegmentationModel initialization...")
     classifier = DummyClassifier()
-    model = QuadtreeSegmentationModel(classifier=classifier, threshold=0.7)
+    model = QuadtreeSegmentationModel(
+        classifier=classifier,
+        classifier_dataset_dir=None,
+        threshold=0.7,
+    )
 
     assert model.classifier == classifier
     assert model.threshold == 0.7
@@ -126,7 +137,7 @@ def test_quadtree_segmentation_evaluate() -> None:
         dtype=np.uint8,
     )  # Not used by dummy classifier
 
-    dataset = DatasetInterface()
+    dataset = SegmentationDatasetInterface()
     dataset.add_sample(dummy_image, dummy_real_mask)
 
     # Classifier and Model setup
@@ -136,6 +147,7 @@ def test_quadtree_segmentation_evaluate() -> None:
     # Set min_region_size to allow clear quadrant segmentation, e.g., 256
     model = QuadtreeSegmentationModel(
         classifier=classifier,
+        classifier_dataset_dir=None,
         threshold=0.99,
         min_region_size=image_size // 2,  # 256
     )
@@ -171,6 +183,7 @@ def test__should_stop_recursion() -> None:
     classifier = DummyClassifier()
     model = QuadtreeSegmentationModel(
         classifier=classifier,
+        classifier_dataset_dir=None,
         threshold=0.7,
         min_region_size=10,
         max_depth=3,
@@ -208,11 +221,18 @@ def test__should_stop_recursion() -> None:
 
     # Case 6: max_depth is None, so depth should not stop recursion
     model_no_max_depth = QuadtreeSegmentationModel(
-        classifier=classifier, threshold=0.7, min_region_size=10, max_depth=None,
+        classifier=classifier,
+        classifier_dataset_dir=None,
+        threshold=0.7,
+        min_region_size=10,
+        max_depth=None,
     )
     assert (
         model_no_max_depth._should_stop_recursion(
-            confidence=0.6, width=20, height=20, depth=100,
+            confidence=0.6,
+            width=20,
+            height=20,
+            depth=100,
         )
         is False
     )
