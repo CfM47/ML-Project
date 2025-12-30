@@ -1,9 +1,11 @@
 """Quadtree-based segmentation model implementation."""
 
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
 
+from auto_ml.implementations.datasets import load_classification_dataset_from_dir
 from auto_ml.interfaces import (
     ClassificationModelInterface,
     ImageArray,
@@ -58,7 +60,11 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             MetricsResultInterface containing training metrics.
 
         """
-        return self.classifier.train(dataset)
+        classifier_dataset = load_classification_dataset_from_dir(
+            Path("auto_ml/datasets/classification"),  # we probably need to change this
+        )
+
+        return self.classifier.train(classifier_dataset)
 
     def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
         """
