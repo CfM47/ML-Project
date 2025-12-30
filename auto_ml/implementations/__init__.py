@@ -1,7 +1,29 @@
 """Concrete implementations of the AutoML interfaces."""
 
 # Augmentators
-from auto_ml.implementations.augmentators import IdentityAugmentator
+from auto_ml.implementations.augmentators import (
+    AdaptiveHistogramEqualizationAugmentator,
+    BrightnessAugmentator,
+    ChargingArtifactAugmentator,
+    ContrastAugmentator,
+    ElasticDeformationAugmentator,
+    GammaAugmentator,
+    GaussianBlurAugmentator,
+    GaussianNoiseAugmentator,
+    HorizontalFlipAugmentator,
+    IdentityAugmentator,
+    MultiplyDatasetAugmentator,
+    OneOfAugmentator,
+    RandomApplyAugmentator,
+    RandomChoiceAugmentator,
+    RandomCropAugmentator,
+    RotationAugmentator,
+    ScaleAugmentator,
+    ScanLineNoiseAugmentator,
+    SequentialAugmentator,
+    TranslationAugmentator,
+    VerticalFlipAugmentator,
+)
 
 # Datasets
 from auto_ml.implementations.datasets import load_dataset_from_directories
@@ -28,6 +50,26 @@ from auto_ml.implementations.segmentators.base import InMemoryPyTorchDataset
 __all__ = [
     # Augmentators
     "IdentityAugmentator",
+    "RotationAugmentator",
+    "HorizontalFlipAugmentator",
+    "VerticalFlipAugmentator",
+    "ScaleAugmentator",
+    "TranslationAugmentator",
+    "RandomCropAugmentator",
+    "BrightnessAugmentator",
+    "ContrastAugmentator",
+    "GaussianNoiseAugmentator",
+    "GaussianBlurAugmentator",
+    "GammaAugmentator",
+    "SequentialAugmentator",
+    "RandomChoiceAugmentator",
+    "RandomApplyAugmentator",
+    "OneOfAugmentator",
+    "MultiplyDatasetAugmentator",
+    "ElasticDeformationAugmentator",
+    "AdaptiveHistogramEqualizationAugmentator",
+    "ChargingArtifactAugmentator",
+    "ScanLineNoiseAugmentator",
     # Datasets
     "load_dataset_from_directories",
     # Nodes
