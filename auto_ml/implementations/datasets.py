@@ -1,12 +1,15 @@
 """Dataset loading utilities."""
 
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 from PIL import Image
 
-from auto_ml.interfaces import SegmentationDatasetInterface
+from auto_ml.interfaces import (
+    ClassificationDatasetInterface,
+    SegmentationDatasetInterface,
+)
 
 
 def load_dataset_from_directories(
@@ -108,4 +111,60 @@ def load_dataset_from_directories(
             pass
 
     print(f"Loaded {len(dataset)} pairs out of {len(input_files)} input files.")
+    return dataset
+
+
+def load_classification_dataset_from_dir(
+    input_path: Path,
+    class_subdirs: List[str] = ["brittle", "ductile", "mixed"],
+    target_size: Tuple[int, int] = (512, 512),
+) -> ClassificationDatasetInterface:
+    """
+    Load dataset from input directory.
+
+    This method assumes the input_path is a folder which contains one sub folder
+    for each class specified in class_subdirs.
+
+    Args:
+        input_path: Directory containing input images.
+        class_subdirs: List of subfolders to load.
+        target_size: tuple (height, width) to resize images to.
+
+    Returns:
+        Populated DatasetInterface.
+
+    """
+    print(f"Loading classification dataset from:\n  Root: {input_path}")
+
+    dataset = ClassificationDatasetInterface()
+    total_count = 0
+
+    for label, folder in enumerate(class_subdirs):
+        class_dir = input_path / folder
+
+        if not class_dir.exists():
+            print(f"Warning: class directory not found: {class_dir}")
+            continue
+
+        input_files = sorted(
+            [
+                f
+                for f in class_dir.glob("*")
+                if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]
+            ],
+        )
+
+        for inp in input_files:
+            try:
+                input_img: Image.Image | Image.ImageFile.ImageFile = Image.open(inp)
+                input_img = input_img.resize((target_size[1], target_size[0]))
+                input_np = np.array(input_img)
+
+                dataset.add_sample(input_np, label)
+                total_count += 1
+
+            except Exception as e:
+                print(f"Error loading {inp.name}: {e}")
+
+    print(f"Loaded {total_count} samples across {len(class_subdirs)} classes.")
     return dataset
