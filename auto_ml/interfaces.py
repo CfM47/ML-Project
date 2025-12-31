@@ -12,7 +12,7 @@ This module defines all the interfaces for the AutoML training pipeline:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple, cast
 
 import numpy as np
 import torch
@@ -132,7 +132,7 @@ class ModelOutputInterface:
     @property
     def shape(self) -> Tuple[int, int]:
         """Return the shape of the mask."""
-        return self.mask.shape
+        return cast(Tuple[int, int], self.mask.shape)
 
     def get_class_counts(self) -> Dict[int, int]:
         """

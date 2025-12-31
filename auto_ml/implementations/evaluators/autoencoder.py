@@ -1,6 +1,6 @@
 """Autoencoder-based mask evaluator implementation."""
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import numpy as np
 import torch
@@ -148,7 +148,7 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
         with torch.no_grad():
             tensor = self._mask_to_tensor(mask)
             z = self.autoencoder.encode(tensor)
-            return z.cpu().numpy().squeeze().astype(np.float32)
+            return cast(np.ndarray, z.cpu().numpy().squeeze().astype(np.float32))
 
     def evaluate(self, mask_pairs: List[List[MaskPair]]) -> float:
         """

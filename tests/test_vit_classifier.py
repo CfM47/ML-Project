@@ -11,7 +11,7 @@ def test_vit_classifier() -> None:  # noqa: D103
     # 1. Create dummy data
     print("Creating dummy image and region...")
     image = (
-        np.random.randint(0, 255, (512, 512), dtype=np.uint8).astype(np.float32) / 255.0
+        np.random.randint(0, 255, (512, 512), dtype=np.uint8)
     )
     x, y, width, height = 100, 100, 224, 224
 
@@ -61,8 +61,7 @@ def test_vit_classifier() -> None:  # noqa: D103
     print("\nTesting RGB image classification...")
     try:
         rgb_image = (
-            np.random.randint(0, 255, (512, 512, 3), dtype=np.uint8).astype(np.float32)
-            / 255.0
+            np.random.randint(0, 255, (512, 512, 3), dtype=np.uint8)
         )
         rgb_classifier = ViTModel(
             device="cpu",

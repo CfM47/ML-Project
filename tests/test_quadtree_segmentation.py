@@ -222,6 +222,7 @@ def test__should_stop_recursion() -> None:
     # Case 6: max_depth is None, so depth should not stop recursion
     model_no_max_depth = QuadtreeSegmentationModel(
         classifier=classifier,
+        classifier_dataset_dir=None,
         threshold=0.7,
         min_region_size=10,
         max_depth=None,
