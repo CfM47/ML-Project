@@ -98,7 +98,10 @@ class AutoML:
     ) -> Optional[Dict[str, Any]]:
         """Retrieve cached result for a specific combination."""
         if self._is_cached(augmentator_name, model_name):
-            return self.results_cache[augmentator_name][model_name]
+            result: Dict[str, Any] = self.results_cache[augmentator_name][
+                model_name
+            ]
+            return result
         return None
 
     def _cache_result(
