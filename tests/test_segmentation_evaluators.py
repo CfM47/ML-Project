@@ -3,21 +3,27 @@
 import numpy as np
 import pytest
 
-from auto_ml.implementations.evaluators.segmentation import (
+from auto_ml.implementations.evaluators.dice import (
     DiceClass0Evaluator,
     DiceClass1Evaluator,
     DiceClass2Evaluator,
     DiceMacroAverageEvaluator,
     DiceWeightedAverageEvaluator,
+)
+from auto_ml.implementations.evaluators.iou import (
     IoUClass0Evaluator,
     IoUClass1Evaluator,
     IoUClass2Evaluator,
     IoUMacroAverageEvaluator,
     IoUWeightedAverageEvaluator,
+)
+from auto_ml.implementations.evaluators.precision import (
     PrecisionClass0Evaluator,
     PrecisionClass1Evaluator,
     PrecisionClass2Evaluator,
     PrecisionMacroAverageEvaluator,
+)
+from auto_ml.implementations.evaluators.recall import (
     RecallClass0Evaluator,
     RecallClass1Evaluator,
     RecallClass2Evaluator,
