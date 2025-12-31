@@ -216,13 +216,14 @@ class AutoML:
 
                         # Build result dict
                         result: Dict[str, Any] = {
-                            "mask_pairs": mask_pairs,
+                            "train_size": len(dataset_pairs[0][0]),
+                            "test_size": len(dataset_pairs[0][1]),
                         }
 
                         # 3. Pass to Evaluator Node (if provided)
                         if evaluator_node:
                             evaluation_results = evaluator_node.evaluate(mask_pairs)
-                            result["evaluation"] = evaluation_results
+                            result["evaluations"] = evaluation_results
 
                         experiment_results[aug_name][model_name] = result
 
