@@ -132,7 +132,7 @@ class ModelOutputInterface:
     @property
     def shape(self) -> Tuple[int, int]:
         """Return the shape of the mask."""
-        return cast(Tuple[int, int], self.mask.shape)
+        return self.mask.shape
 
     def get_class_counts(self) -> Dict[int, int]:
         """
