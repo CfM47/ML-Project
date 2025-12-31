@@ -12,7 +12,7 @@ This module defines all the interfaces for the AutoML training pipeline:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Tuple, cast
+from typing import Any, Dict, Iterator, List, Tuple
 
 import numpy as np
 import torch
