@@ -16,7 +16,7 @@ class AutoML:
     strategies and models. Includes caching and execution time tracking.
     """
 
-    def __init__(self, cache_dir: str = ".automl_cache") -> None:  # noqa: D107
+    def __init__(self, cache_dir: str = "automl_cache") -> None:  # noqa: D107
         self.results: Dict[str, Any] = {}
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
