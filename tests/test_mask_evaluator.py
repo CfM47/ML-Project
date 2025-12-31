@@ -64,7 +64,7 @@ class TestAutoencoderMaskEvaluator:
             center = (256 + i * 5, 256 + i * 5)
             radius = 100 + i * 10
             y, x = np.ogrid[:512, :512]
-            dist = np.sqrt((x - center[0])**2 + (y - center[1])**2)
+            dist = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
             pred_mask[dist <= radius] = 1
             real_mask[dist <= radius + 5] = 1  # Slightly larger
 

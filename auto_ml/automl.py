@@ -138,4 +138,3 @@ class AutoML:
 
         summary += "\n================================="
         return summary
-

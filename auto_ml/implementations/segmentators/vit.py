@@ -15,7 +15,7 @@ from auto_ml.interfaces import (
     SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
-from auto_ml.models.vit.model import ViTSegmentation
+from auto_ml.models.vit.segmentation import ViTSegmentation
 
 
 class ViTModel(SegmentationModelInterface):

@@ -115,7 +115,7 @@ class AutoencoderMaskEvaluator(EvaluatorInterface):
             indices = torch.randperm(len(dataset_tensor))
 
             for i in range(0, len(dataset_tensor), self.batch_size):
-                batch_idx = indices[i:i + self.batch_size]
+                batch_idx = indices[i : i + self.batch_size]
                 batch = dataset_tensor[batch_idx].to(self.device)
 
                 optimizer.zero_grad()
