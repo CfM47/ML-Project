@@ -1,4 +1,7 @@
 import copy
+import json
+import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from auto_ml.implementations import DataAugmentatorNode, EvaluatorNode, ModelNode
@@ -10,11 +13,114 @@ class AutoML:
     AutoML Orchestrator.
 
     Manages the execution of experiments across multiple data augmentation
-    strategies and models.
+    strategies and models. Includes caching and execution time tracking.
     """
 
-    def __init__(self) -> None:  # noqa: D107
+    def __init__(self, cache_dir: str = ".automl_cache") -> None:  # noqa: D107
         self.results: Dict[str, Any] = {}
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
+
+        self.results_cache_path = self.cache_dir / "results_cache.json"
+        self.execution_times_cache_path = self.cache_dir / "execution_times_cache.json"
+
+        self.results_cache: Dict[str, Any] = {}
+        self.execution_times_cache: Dict[str, Any] = {}
+
+        self._load_caches()
+
+    def _load_caches(self) -> None:
+        """Load results and execution times caches from JSON files."""
+        if self.results_cache_path.exists():
+            try:
+                with open(self.results_cache_path, "r") as f:
+                    self.results_cache = json.load(f)
+                print(f"Loaded results cache from {self.results_cache_path}")
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Failed to load results cache: {e}")
+                self.results_cache = {}
+
+        if self.execution_times_cache_path.exists():
+            try:
+                with open(self.execution_times_cache_path, "r") as f:
+                    self.execution_times_cache = json.load(f)
+                print(
+                    f"Loaded execution times cache from "
+                    f"{self.execution_times_cache_path}",
+                )
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Failed to load execution times cache: {e}")
+                self.execution_times_cache = {}
+
+    def _save_results_cache(self) -> None:
+        """Save results cache to JSON file."""
+        try:
+            with open(self.results_cache_path, "w") as f:
+                json.dump(self.results_cache, f, indent=2, default=str)
+            print(f"Saved results cache to {self.results_cache_path}")
+        except IOError as e:
+            print(f"Warning: Failed to save results cache: {e}")
+
+    def _save_execution_times_cache(self) -> None:
+        """Save execution times cache to JSON file."""
+        try:
+            with open(self.execution_times_cache_path, "w") as f:
+                json.dump(self.execution_times_cache, f, indent=2)
+            print(
+                f"Saved execution times cache to {self.execution_times_cache_path}",
+            )
+        except IOError as e:
+            print(f"Warning: Failed to save execution times cache: {e}")
+
+    def _clear_cache_entry(self, augmentator_name: str, model_name: str) -> None:
+        """Clear cache entry for a specific augmentator+model pair."""
+        if augmentator_name in self.results_cache:
+            if model_name in self.results_cache[augmentator_name]:
+                del self.results_cache[augmentator_name][model_name]
+
+        if augmentator_name in self.execution_times_cache:
+            if model_name in self.execution_times_cache[augmentator_name]:
+                del self.execution_times_cache[augmentator_name][model_name]
+
+        self._save_results_cache()
+        self._save_execution_times_cache()
+        print(f"Cleared cache for {augmentator_name}:{model_name}")
+
+    def _is_cached(self, augmentator_name: str, model_name: str) -> bool:
+        """Check if a combination is in the results cache."""
+        return (
+            augmentator_name in self.results_cache
+            and model_name in self.results_cache[augmentator_name]
+        )
+
+    def _get_cached_result(
+        self, augmentator_name: str, model_name: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Retrieve cached result for a specific combination."""
+        if self._is_cached(augmentator_name, model_name):
+            return self.results_cache[augmentator_name][model_name]
+        return None
+
+    def _cache_result(
+        self,
+        augmentator_name: str,
+        model_name: str,
+        result: Dict[str, Any],
+        execution_time: float,
+    ) -> None:
+        """Cache result and execution time for a specific combination."""
+        if augmentator_name not in self.results_cache:
+            self.results_cache[augmentator_name] = {}
+
+        self.results_cache[augmentator_name][model_name] = result
+
+        if augmentator_name not in self.execution_times_cache:
+            self.execution_times_cache[augmentator_name] = {}
+
+        self.execution_times_cache[augmentator_name][model_name] = execution_time
+
+        self._save_results_cache()
+        self._save_execution_times_cache()
 
     def run_experiment(
         self,
@@ -22,6 +128,7 @@ class AutoML:
         augmentator_nodes: List[DataAugmentatorNode],
         model_nodes: List[ModelNode],
         evaluator_node: Optional[EvaluatorNode] = None,
+        clear_cache: Optional[List[tuple]] = None,
     ) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
         Run a full experiment.
@@ -33,6 +140,8 @@ class AutoML:
             augmentator_nodes: List of DataAugmentatorNode instances.
             model_nodes: List of ModelNode instances.
             evaluator_node: Optional single EvaluatorNode instance.
+            clear_cache: Optional list of (augmentator_name, model_name)
+                tuples to clear.
 
         Returns:
             Dictionary structure:
@@ -46,6 +155,11 @@ class AutoML:
             }
 
         """
+        # Clear cache entries if specified
+        if clear_cache:
+            for aug_name, model_name in clear_cache:
+                self._clear_cache_entry(aug_name, model_name)
+
         print(
             f"Starting AutoML Experiment with {len(augmentator_nodes)} augmentators",
             f"and {len(model_nodes)} models.",
@@ -66,7 +180,25 @@ class AutoML:
                 # 2. Iterate Models
                 for model_node_template in model_nodes:
                     model_name = model_node_template.name
+
+                    # Check cache first
+                    if self._is_cached(aug_name, model_name):
+                        print(f"  Training Model Node: {model_name} (cached)")
+                        cached_result = self._get_cached_result(
+                            aug_name, model_name,
+                        )
+                        execution_time = (
+                            self.execution_times_cache[aug_name][model_name]
+                        )
+                        experiment_results[aug_name][model_name] = cached_result
+                        print(
+                            f"    Loaded from cache "
+                            f"(execution time: {execution_time:.2f}s)",
+                        )
+                        continue
+
                     print(f"  Training Model Node: {model_name}")
+                    cycle_start_time = time.time()
 
                     try:
                         # CRITICAL: Use a fresh copy of the model for this pipeline run
@@ -90,6 +222,17 @@ class AutoML:
                             result["evaluation"] = evaluation_results
 
                         experiment_results[aug_name][model_name] = result
+
+                        # Cache the result and execution time
+                        cycle_end_time = time.time()
+                        execution_time = cycle_end_time - cycle_start_time
+                        self._cache_result(
+                            aug_name, model_name, result, execution_time,
+                        )
+                        print(
+                            f"    Cached result "
+                            f"(execution time: {execution_time:.2f}s)",
+                        )
 
                     except Exception as e:
                         print(f"    Error training {model_name} on {aug_name}: {e}")
