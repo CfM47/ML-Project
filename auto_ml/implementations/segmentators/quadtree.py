@@ -1,10 +1,10 @@
 """Quadtree-based segmentation model implementation."""
 
 
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
-import math
 import numpy as np
 
 from auto_ml.implementations.datasets import load_classification_dataset_from_dir
@@ -67,6 +67,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
                           If None, default ranges are used.
             n_trials: Number of random trials to perform during hyperparameter
                       tuning. Defaults to 20.
+
         """
         self.classifier = classifier
         self.threshold = threshold
@@ -129,27 +130,31 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             "min_region_size": min_region_range,
             "max_depth": max_depth_range,
         }
-        
+
         # Initial Solution (Random Start)
         current_threshold = np.random.uniform(threshold_range[0], threshold_range[1])
-        current_min_size = np.random.randint(min_region_range[0], min_region_range[1] + 1)
-        current_max_depth = np.random.randint(max_depth_range[0], max_depth_range[1] + 1)
+        current_min_size = np.random.randint(
+            min_region_range[0], min_region_range[1] + 1,
+        )
+        current_max_depth = np.random.randint(
+            max_depth_range[0], max_depth_range[1] + 1,
+        )
 
         current_params: _BestParams = {
             "threshold": current_threshold,
             "min_region_size": current_min_size,
             "max_depth": current_max_depth,
         }
-        
+
         # We need an initial metric for SA to compare against
         self.threshold = current_threshold
         self.min_region_size = current_min_size
         self.max_depth = current_max_depth
-        
+
         initial_pairs = self.evaluate(val_dataset)
         initial_metrics = self._compute_metrics(initial_pairs)
         current_metric_val = -1.0
-        
+
         if self.optimize_metric in initial_metrics.to_dict():
              val = initial_metrics.to_dict()[self.optimize_metric]
              if isinstance(val, (int, float)):
@@ -161,12 +166,12 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         # SA Hyperparameters
         temp = 1.0
         alpha = 0.90 # Cooling rate
-        
+
         # SA Loop
         for i in range(self.n_trials):
             # Generate Neighbor
             neighbor_params = self._get_neighbor(current_params, ranges)
-            
+
             # Evaluate Neighbor
             self.threshold = neighbor_params["threshold"]
             self.min_region_size = neighbor_params["min_region_size"]
@@ -178,7 +183,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
 
             if self.optimize_metric not in metrics_dict:
                 break
-                
+
             neighbor_metric_val = metrics_dict[self.optimize_metric]
             if not isinstance(neighbor_metric_val, (int, float)):
                  break
@@ -187,7 +192,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             # if neighbor is better, prob > 1, algorithm accepts
             # if worse, prob < 1, algorithm accepts with probability
             delta = neighbor_metric_val - current_metric_val
-            
+
             if delta > 0:
                 acceptance_prob = 2.0 # Always accept
             else:
@@ -200,12 +205,12 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             if delta > 0 or np.random.rand() < acceptance_prob:
                 current_params = neighbor_params
                 current_metric_val = neighbor_metric_val
-            
+
             # Keep track of global best
             if current_metric_val > best_metric:
                 best_metric = current_metric_val
                 best_params = current_params.copy()
-            
+
             # Cool down
             temp *= alpha
 
@@ -317,13 +322,11 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         params: _BestParams,
         ranges: Dict[str, Tuple[Any, Any]],
     ) -> _BestParams:
-        """
-        Generate a neighbor configuration by perturbing current parameters.
-        """
+        """Generate a neighbor configuration by perturbing current parameters."""
         new_params = params.copy()
 
         # Perturb one parameter at a time or all? Let's perturb all slightly.
-        
+
         # Threshold: Perturb by normal noise stride 0.05
         t_range = ranges["threshold"]
         t_current = new_params["threshold"]
@@ -336,7 +339,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         mr_step = np.random.randint(-2, 3) # -2, -1, 0, 1, 2
         mr_new = mr_current + mr_step
         new_params["min_region_size"] = int(
-            np.clip(mr_new, mr_range[0], mr_range[1])
+            np.clip(mr_new, mr_range[0], mr_range[1]),
         )
 
         # Max Depth: Perturb by +/- 1
@@ -346,7 +349,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
              md_step = np.random.randint(-1, 2)
              md_new = md_current + md_step
              new_params["max_depth"] = int(np.clip(md_new, md_range[0], md_range[1]))
-        
+
         return new_params
 
     def _should_stop_recursion(

@@ -287,14 +287,15 @@ def test_quadtree_hyperparameter_tuning() -> None:
     assert model.min_region_size is not None, (
         "min_region_size should be set after tuning"
     )
-    
+
     # Check that tuned values are within ranges
     assert 0.1 <= model.threshold <= 0.9
     assert 4 <= model.min_region_size <= 32
     if model.max_depth is not None:
-         # Note: upper bound is inclusive in random.randint but range max is usually exclusive in python slicing? 
-         # My implementation uses randint(min, max+1) from ranges, implying max is inclusive.
-         # So checking <= 5 is correct if range was (2, 5).
+        # Note: upper bound is inclusive in random.randint but range max is
+        # usually exclusive in python slicing.
+        # My implementation uses randint(min, max+1) from ranges, implying max is
+        # inclusive. So checking <= 5 is correct if range was (2, 5).
          assert 2 <= model.max_depth <= 5
 
     print("Hyperparameter tuning changes:")
