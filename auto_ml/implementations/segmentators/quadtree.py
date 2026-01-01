@@ -1,9 +1,10 @@
 """Quadtree-based segmentation model implementation."""
 
-from itertools import product
-from pathlib import Path
-from typing import List, Optional, Tuple, TypedDict
 
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
+
+import math
 import numpy as np
 
 from auto_ml.implementations.datasets import load_classification_dataset_from_dir
@@ -41,6 +42,8 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         min_region_size: int = 1,
         max_depth: Optional[int] = None,
         optimize_metric: Optional[str] = None,
+        search_space: Optional[Dict[str, Tuple[Any, Any]]] = None,
+        n_trials: int = 20,
     ) -> None:
         """
         Initialize the quadtree segmentation model.
@@ -56,7 +59,14 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             min_region_size: Minimum width or height to allow subdivision.
             max_depth: Optional maximum recursion depth.
             optimize_metric: Whether to optimize hyperparameters by maximizing a metric.
-
+            search_space: Optional dictionary defining the search ranges for
+                          hyperparameters.
+                          - 'threshold': (min, max) float
+                          - 'min_region_size': (min, max) int
+                          - 'max_depth': (min, max) int
+                          If None, default ranges are used.
+            n_trials: Number of random trials to perform during hyperparameter
+                      tuning. Defaults to 20.
         """
         self.classifier = classifier
         self.threshold = threshold
@@ -64,6 +74,8 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         self.max_depth = max_depth
         self.classifier_dataset_dir = classifier_dataset_dir
         self.optimize_metric = optimize_metric
+        self.search_space = search_space
+        self.n_trials = n_trials
 
     def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
         """
@@ -90,18 +102,15 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             return metrics
 
         # hyperparameter tunning
-
-        # simple search space
-        threshold_candidates = [0.5, 0.6, 0.7, 0.8, 0.9]
-        min_region_candidates = [4, 8, 16]
-        max_depth_candidates = [None, 4, 6, 8]
-
-        best_metric = -1.0
-        best_params: _BestParams = {
-            "threshold": self.threshold,
-            "min_region_size": self.min_region_size,
-            "max_depth": self.max_depth,
-        }
+        if self.search_space:
+            threshold_range = self.search_space.get("threshold", (0.5, 0.9))
+            min_region_range = self.search_space.get("min_region_size", (4, 16))
+            max_depth_range = self.search_space.get("max_depth", (4, 8))
+        else:
+            # simple default ranges
+            threshold_range = (0.5, 0.9)
+            min_region_range = (4, 16)
+            max_depth_range = (4, 8)
 
         # Split dataset in train/val just for tunning
         n = len(dataset)
@@ -114,37 +123,91 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             [dataset.samples[i] for i in val_indices],
         )
 
-        # move through the combinations
-        for threshold, min_size, max_depth in product(
-            threshold_candidates,
-            min_region_candidates,
-            max_depth_candidates,
-        ):
-            self.threshold = threshold
-            self.min_region_size = min_size
-            self.max_depth = max_depth
+        # Simulated Annealing Configuration
+        ranges = {
+            "threshold": threshold_range,
+            "min_region_size": min_region_range,
+            "max_depth": max_depth_range,
+        }
+        
+        # Initial Solution (Random Start)
+        current_threshold = np.random.uniform(threshold_range[0], threshold_range[1])
+        current_min_size = np.random.randint(min_region_range[0], min_region_range[1] + 1)
+        current_max_depth = np.random.randint(max_depth_range[0], max_depth_range[1] + 1)
 
-            # evaluate over validation
+        current_params: _BestParams = {
+            "threshold": current_threshold,
+            "min_region_size": current_min_size,
+            "max_depth": current_max_depth,
+        }
+        
+        # We need an initial metric for SA to compare against
+        self.threshold = current_threshold
+        self.min_region_size = current_min_size
+        self.max_depth = current_max_depth
+        
+        initial_pairs = self.evaluate(val_dataset)
+        initial_metrics = self._compute_metrics(initial_pairs)
+        current_metric_val = -1.0
+        
+        if self.optimize_metric in initial_metrics.to_dict():
+             val = initial_metrics.to_dict()[self.optimize_metric]
+             if isinstance(val, (int, float)):
+                 current_metric_val = val
+
+        best_params = current_params.copy()
+        best_metric = current_metric_val
+
+        # SA Hyperparameters
+        temp = 1.0
+        alpha = 0.90 # Cooling rate
+        
+        # SA Loop
+        for i in range(self.n_trials):
+            # Generate Neighbor
+            neighbor_params = self._get_neighbor(current_params, ranges)
+            
+            # Evaluate Neighbor
+            self.threshold = neighbor_params["threshold"]
+            self.min_region_size = neighbor_params["min_region_size"]
+            self.max_depth = neighbor_params["max_depth"]
+
             predicted_real_pairs = self.evaluate(val_dataset)
             metrics = self._compute_metrics(predicted_real_pairs)
-
             metrics_dict = metrics.to_dict()
-            # stop if metric not available
-            if self.optimize_metric not in metrics_dict.keys():
+
+            if self.optimize_metric not in metrics_dict:
                 break
+                
+            neighbor_metric_val = metrics_dict[self.optimize_metric]
+            if not isinstance(neighbor_metric_val, (int, float)):
+                 break
 
-            metric_value = metrics_dict[self.optimize_metric]
+            # Acceptance Probability (Maximization)
+            # if neighbor is better, prob > 1, algorithm accepts
+            # if worse, prob < 1, algorithm accepts with probability
+            delta = neighbor_metric_val - current_metric_val
+            
+            if delta > 0:
+                acceptance_prob = 2.0 # Always accept
+            else:
+                # Avoid overflow/underflow if temp is too low or delta too neg
+                try:
+                    acceptance_prob = math.exp(delta / temp)
+                except OverflowError:
+                    acceptance_prob = 0.0
 
-            if type(metric_value) not in [int, float]:
-                break
-
-            if metric_value > best_metric:
-                best_metric = metric_value
-                best_params = {
-                    "threshold": threshold,
-                    "min_region_size": min_size,
-                    "max_depth": max_depth,
-                }
+            if delta > 0 or np.random.rand() < acceptance_prob:
+                current_params = neighbor_params
+                current_metric_val = neighbor_metric_val
+            
+            # Keep track of global best
+            if current_metric_val > best_metric:
+                best_metric = current_metric_val
+                best_params = current_params.copy()
+            
+            # Cool down
+            temp *= alpha
 
         # update with best configuration
         self.threshold = best_params["threshold"]
@@ -248,6 +311,43 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
     # ------------------------------------------------------------------
     # Utility methods
     # ------------------------------------------------------------------
+
+    def _get_neighbor(
+        self,
+        params: _BestParams,
+        ranges: Dict[str, Tuple[Any, Any]],
+    ) -> _BestParams:
+        """
+        Generate a neighbor configuration by perturbing current parameters.
+        """
+        new_params = params.copy()
+
+        # Perturb one parameter at a time or all? Let's perturb all slightly.
+        
+        # Threshold: Perturb by normal noise stride 0.05
+        t_range = ranges["threshold"]
+        t_current = new_params["threshold"]
+        t_new = t_current + np.random.normal(0, 0.05)
+        new_params["threshold"] = np.clip(t_new, t_range[0], t_range[1])
+
+        # Min Region: Perturb by +/- 1 or Stay
+        mr_range = ranges["min_region_size"]
+        mr_current = new_params["min_region_size"]
+        mr_step = np.random.randint(-2, 3) # -2, -1, 0, 1, 2
+        mr_new = mr_current + mr_step
+        new_params["min_region_size"] = int(
+            np.clip(mr_new, mr_range[0], mr_range[1])
+        )
+
+        # Max Depth: Perturb by +/- 1
+        md_range = ranges["max_depth"]
+        if new_params["max_depth"] is not None:
+             md_current = new_params["max_depth"]
+             md_step = np.random.randint(-1, 2)
+             md_new = md_current + md_step
+             new_params["max_depth"] = int(np.clip(md_new, md_range[0], md_range[1]))
+        
+        return new_params
 
     def _should_stop_recursion(
         self,
