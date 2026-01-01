@@ -238,3 +238,47 @@ def test__should_stop_recursion() -> None:
     )
 
     print("_should_stop_recursion method VERIFICATION SUCCESSFUL!")
+
+
+def test_quadtree_hyperparameter_tuning() -> None:
+    """Test that hyperparameter tuning runs without errors."""
+    print(
+        "Initializing check for QuadtreeSegmentationModel hyperparameter tuning...",
+    )
+
+    # Dummy dataset: one simple image
+    image_size = 512
+    dummy_image = np.zeros((image_size, image_size), dtype=np.uint8)
+    dummy_real_mask = np.zeros((image_size, image_size), dtype=np.uint8)
+
+    dataset = SegmentationDatasetInterface()
+    dataset.add_sample(dummy_image, dummy_real_mask)
+
+    # Dummy classifier
+    classifier = DummyClassifier()
+
+    # Initialize quadtree with hyperparameter tuning enabled
+    model = QuadtreeSegmentationModel(
+        classifier=classifier,
+        classifier_dataset_dir=None,  # Dataset not needed for DummyClassifier.train
+        threshold=0.5,
+        min_region_size=1,
+        max_depth=4,
+        optimize_metric="accuracy",  # activamos hyperparameter tuning
+    )
+
+    # Ejecutar entrenamiento / hyperparameter tuning
+    metrics_result = model.train(dataset)
+
+    # Verificaciones
+    assert isinstance(metrics_result, MetricsResultInterface), (
+        "train must return MetricsResultInterface"
+    )
+    assert model.threshold is not None, "threshold should be set after tuning"
+    assert model.min_region_size is not None, (
+        "min_region_size should be set after tuning"
+    )
+    print("Hyperparameter tuning changes:")
+    print("Original:", model.threshold, model.min_region_size, model.max_depth)
+    print("Tuned:", model.threshold, model.min_region_size, model.max_depth)
+    print("Hyperparameter tuning VERIFICATION SUCCESSFUL!")
