@@ -102,7 +102,7 @@ def _run_with_setup() -> None:
 
     augmentators = get_augmentator_nodes()
     models = get_model_nodes()
-    evaluator = get_evaluator_node()
+    evaluator = get_evaluator_node(dataset)
 
     automl = AutoML()
     automl.run_experiment(dataset, augmentators, models, evaluator_node=evaluator)
