@@ -48,7 +48,7 @@ def _run_automl() -> None:
         random_seed=42,
     )
 
-    augmentators = [aug_node_2]
+    augmentators = [aug_node_1, aug_node_2]
 
     # Models
     vit_model = ViTModel(epochs=2, batch_size=2, device="auto")
