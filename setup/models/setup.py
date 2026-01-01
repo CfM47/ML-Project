@@ -49,7 +49,7 @@ def create_quadtree_model_nodes() -> List[ModelNode]:
     ]
 
     # change this parameters at taste
-    optimize_metric = "f1"
+    optimize_metric = "f1_score"
     classifier_dataset_dir = Path("path/to/dataset")
 
     return [
