@@ -177,3 +177,6 @@ pyrightconfig.json
 
 /data/
 /.data/
+
+# LLM
+.claude/
