@@ -48,10 +48,10 @@ def _run_automl() -> None:
         random_seed=42,
     )
 
-    augmentators = [aug_node_1]
+    augmentators = [aug_node_1, aug_node_2]
 
     # Models
-    vit_model = ViTModel(epochs=5, batch_size=2, device="auto")
+    vit_model = ViTModel(epochs=2, batch_size=2, device="auto")
     swin_model = SwinModel(epochs=2, batch_size=2, device="auto")
 
     model_node_vit = ModelNode(model=vit_model, name="ViT_Model_Node")
@@ -66,10 +66,10 @@ def _run_automl() -> None:
     evaluator_node = EvaluatorNode(
         evaluators={
             "accuracy": AccuracyEvaluator(),
-            "autoencoder_match": AutoencoderMaskEvaluator(
+            "mask_cohesion": AutoencoderMaskEvaluator(
                 reference_masks=reference_masks,
                 latent_dim=8,
-                epochs=100,
+                epochs=20,
                 nu=0.5,
                 device="auto",
             ),
