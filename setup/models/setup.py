@@ -12,13 +12,13 @@ from auto_ml.interfaces import ClassificationModelInterface
 
 def create_vit_model_node() -> ModelNode:
     """Create a ModelNode with a ViT segmentation model."""
-    vit_model = ViTSegmentationModel(epochs=20, batch_size=2, device="auto")
+    vit_model = ViTSegmentationModel(epochs=40, batch_size=2, device="auto")
     return ModelNode(model=vit_model, name="ViT_Model_Node")
 
 
 def create_swin_model_node() -> ModelNode:
     """Create a ModelNode with a Swin segmentation model."""
-    swin_model = SwinModel(epochs=20, batch_size=2, device="auto")
+    swin_model = SwinModel(epochs=40, batch_size=2, device="auto")
     return ModelNode(model=swin_model, name="Swin_Model_Node")
 
 

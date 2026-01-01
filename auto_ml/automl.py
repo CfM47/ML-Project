@@ -230,6 +230,25 @@ class AutoML:
                         # Cache the result and execution time
                         cycle_end_time = time.time()
                         execution_time = cycle_end_time - cycle_start_time
+
+                        # Extract training history if available
+                        # Extract training history if available
+                        if (
+                            hasattr(model_node, "last_training_metrics")
+                            and model_node.last_training_metrics
+                        ):
+                            # We might have multiple folds.
+                            # Let's simple store the history of the last fold
+                            # or list of all.
+                            # Since result is per model/aug pair,
+                            # maybe we want to store all?
+                            # For simplicity, append the history to the result object
+                            # We'll use the 'history' key which is a list of lists
+                            # (one per fold)
+                            result["training_history"] = [
+                                m.history for m in model_node.last_training_metrics
+                            ]
+
                         self._cache_result(
                             aug_name, model_name, result, execution_time,
                         )
