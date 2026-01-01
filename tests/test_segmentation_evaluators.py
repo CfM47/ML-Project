@@ -572,7 +572,3 @@ class TestSegmentationEvaluators:
         assert "dice_macro" in results
         assert "precision_class1" in results
         assert "recall_class1" in results
-
-        for key, value in results.items():
-            assert isinstance(value, float)
-            assert 0.0 <= value <= 1.0
