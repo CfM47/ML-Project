@@ -226,9 +226,12 @@ class EvaluatorNode(EvaluatorNodeInterface):
 
         for eval_name, evaluator in self.evaluators.items():
             print(f"  Running evaluator: {eval_name}")
-            result = evaluator.evaluate(mask_pairs)
-            results[eval_name] = result
-            print(f"    Result: {result}")
+            results[eval_name] = []
+            for mask_pair_list in mask_pairs:
+                evaluation_list = [mask_pair_list]
+                result = evaluator.evaluate(evaluation_list)
+                results[eval_name].append(result)
+                print(f"    Result: {result}")
 
         print(f"{self.name}: Evaluation complete.")
         return results
