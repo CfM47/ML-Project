@@ -170,7 +170,7 @@ class TestSegmentationEvaluators:
         assert result == 0.0
 
     def test_iou_macro_average_returns_float(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test IoU macro average returns float."""
         evaluator = IoUMacroAverageEvaluator()
@@ -180,7 +180,7 @@ class TestSegmentationEvaluators:
         assert 0.0 <= result <= 1.0
 
     def test_iou_weighted_average_returns_float(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test IoU weighted average returns float."""
         evaluator = IoUWeightedAverageEvaluator()
@@ -190,7 +190,7 @@ class TestSegmentationEvaluators:
         assert 0.0 <= result <= 1.0
 
     def test_iou_macro_vs_weighted_differ_with_imbalance(
-        self, imbalanced_masks: list
+        self, imbalanced_masks: list,
     ) -> None:
         """Test macro and weighted IoU can differ with class imbalance."""
         macro_eval = IoUMacroAverageEvaluator()
@@ -242,7 +242,7 @@ class TestSegmentationEvaluators:
         assert result == 0.0
 
     def test_dice_class2_never_appears(
-        self, class_never_appears_masks: list
+        self, class_never_appears_masks: list,
     ) -> None:
         """Test Dice returns 0.0 when class 2 never appears."""
         evaluator = DiceClass2Evaluator()
@@ -252,7 +252,7 @@ class TestSegmentationEvaluators:
         assert result == 0.0
 
     def test_dice_macro_average_returns_float(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test Dice macro average returns float."""
         evaluator = DiceMacroAverageEvaluator()
@@ -262,7 +262,7 @@ class TestSegmentationEvaluators:
         assert 0.0 <= result <= 1.0
 
     def test_dice_weighted_average_returns_float(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test Dice weighted average returns float."""
         evaluator = DiceWeightedAverageEvaluator()
@@ -272,7 +272,7 @@ class TestSegmentationEvaluators:
         assert 0.0 <= result <= 1.0
 
     def test_dice_greater_than_iou_relationship(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test that Dice >= IoU (mathematical relationship)."""
         iou_eval = IoUClass1Evaluator()
@@ -289,7 +289,7 @@ class TestSegmentationEvaluators:
     # ========================================================================
 
     def test_precision_class0_perfect_match(
-        self, perfect_match_masks: list
+        self, perfect_match_masks: list,
     ) -> None:
         """Test Precision returns 1.0 for perfect predictions."""
         evaluator = PrecisionClass0Evaluator()
@@ -299,7 +299,7 @@ class TestSegmentationEvaluators:
         assert result == 1.0
 
     def test_precision_class1_perfect_match(
-        self, perfect_match_masks: list
+        self, perfect_match_masks: list,
     ) -> None:
         """Test Precision returns 1.0 for perfect predictions."""
         evaluator = PrecisionClass1Evaluator()
@@ -309,7 +309,7 @@ class TestSegmentationEvaluators:
         assert result == 1.0
 
     def test_precision_class2_perfect_match(
-        self, perfect_match_masks: list
+        self, perfect_match_masks: list,
     ) -> None:
         """Test Precision returns 1.0 for perfect predictions."""
         evaluator = PrecisionClass2Evaluator()
@@ -319,7 +319,7 @@ class TestSegmentationEvaluators:
         assert result == 1.0
 
     def test_precision_class2_never_appears(
-        self, class_never_appears_masks: list
+        self, class_never_appears_masks: list,
     ) -> None:
         """Test Precision returns 0.0 when class 2 never predicted."""
         evaluator = PrecisionClass2Evaluator()
@@ -329,7 +329,7 @@ class TestSegmentationEvaluators:
         assert result == 0.0
 
     def test_precision_macro_average_returns_float(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test Precision macro average returns float."""
         evaluator = PrecisionMacroAverageEvaluator()
@@ -367,7 +367,7 @@ class TestSegmentationEvaluators:
         assert result == 1.0
 
     def test_recall_class2_never_appears(
-        self, class_never_appears_masks: list
+        self, class_never_appears_masks: list,
     ) -> None:
         """Test Recall returns 0.0 when class 2 never in ground truth."""
         evaluator = RecallClass2Evaluator()
@@ -377,7 +377,7 @@ class TestSegmentationEvaluators:
         assert result == 0.0
 
     def test_recall_macro_average_returns_float(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test Recall macro average returns float."""
         evaluator = RecallMacroAverageEvaluator()
@@ -423,8 +423,6 @@ class TestSegmentationEvaluators:
     def test_dice_known_values(self) -> None:
         """Test Dice with known confusion matrix values."""
         # Same setup as IoU test
-        # Dice = 2*TP / (2*TP + FP + FN)
-        # Dice = 2*80 / (2*80 + 0 + 20) = 160/180 = 0.888...
 
         pred_mask = np.zeros((10, 10), dtype=np.uint8)
         real_mask = np.zeros((10, 10), dtype=np.uint8)
@@ -524,7 +522,7 @@ class TestSegmentationEvaluators:
     # ========================================================================
 
     def test_all_evaluators_return_valid_floats(
-        self, sample_mask_pairs: list
+        self, sample_mask_pairs: list,
     ) -> None:
         """Test that all evaluators return valid floats in [0.0, 1.0]."""
         evaluators = [
