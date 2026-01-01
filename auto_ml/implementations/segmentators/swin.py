@@ -1,6 +1,6 @@
 """Swin Transformer model implementation for segmentation."""
 
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import torch
@@ -69,7 +69,11 @@ class SwinModel(SegmentationModelInterface):
             channels=1,
         ).to(self.device)
 
-    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
+    def train(
+        self,
+        dataset: SegmentationDatasetInterface,
+        validation_dataset: SegmentationDatasetInterface | None = None,
+    ) -> MetricsResultInterface:
         """Train the model."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(
@@ -84,9 +88,12 @@ class SwinModel(SegmentationModelInterface):
         self.model.train()
 
         total_loss: float = 0
+        history: List[Dict[str, float]] = []
 
         for epoch in range(self.epochs):
             epoch_loss = 0
+            self.model.train()  # Ensure in train mode
+
             for inputs, masks in dataloader:
                 inputs = inputs.to(self.device)
                 masks = masks.to(self.device)
@@ -115,6 +122,7 @@ class SwinModel(SegmentationModelInterface):
             loss=total_loss,
             accuracy=0.0,
             additional_metrics={"epochs_trained": self.epochs},
+            history=history,
         )
 
     def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
