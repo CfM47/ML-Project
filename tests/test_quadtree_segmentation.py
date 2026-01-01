@@ -238,3 +238,67 @@ def test__should_stop_recursion() -> None:
     )
 
     print("_should_stop_recursion method VERIFICATION SUCCESSFUL!")
+
+
+def test_quadtree_hyperparameter_tuning() -> None:
+    """Test that hyperparameter tuning runs without errors."""
+    print(
+        "Initializing check for QuadtreeSegmentationModel hyperparameter tuning...",
+    )
+
+    # Dummy dataset: one simple image
+    image_size = 512
+    dummy_image = np.zeros((image_size, image_size), dtype=np.uint8)
+    dummy_real_mask = np.zeros((image_size, image_size), dtype=np.uint8)
+
+    dataset = SegmentationDatasetInterface()
+    dataset.add_sample(dummy_image, dummy_real_mask)
+
+    # Dummy classifier
+    classifier = DummyClassifier()
+
+    # Define a custom search space
+    custom_search_space = {
+        "threshold": (0.1, 0.9),
+        "min_region_size": (4, 32),
+        "max_depth": (2, 5),
+    }
+
+    # Initialize quadtree with hyperparameter tuning enabled and SA config
+    model = QuadtreeSegmentationModel(
+        classifier=classifier,
+        classifier_dataset_dir=None,  # Dataset not needed for DummyClassifier.train
+        threshold=0.5,
+        min_region_size=8,
+        max_depth=4,
+        optimize_metric="accuracy",  # activamos hyperparameter tuning
+        search_space=custom_search_space,
+        n_trials=5, # Small number of trials for testing speed
+    )
+
+    # Ejecutar entrenamiento / hyperparameter tuning
+    metrics_result = model.train(dataset)
+
+    # Verificaciones
+    assert isinstance(metrics_result, MetricsResultInterface), (
+        "train must return MetricsResultInterface"
+    )
+    assert model.threshold is not None, "threshold should be set after tuning"
+    assert model.min_region_size is not None, (
+        "min_region_size should be set after tuning"
+    )
+
+    # Check that tuned values are within ranges
+    assert 0.1 <= model.threshold <= 0.9
+    assert 4 <= model.min_region_size <= 32
+    if model.max_depth is not None:
+        # Note: upper bound is inclusive in random.randint but range max is
+        # usually exclusive in python slicing.
+        # My implementation uses randint(min, max+1) from ranges, implying max is
+        # inclusive. So checking <= 5 is correct if range was (2, 5).
+         assert 2 <= model.max_depth <= 5
+
+    print("Hyperparameter tuning changes:")
+    print("Original:", model.threshold, model.min_region_size, model.max_depth)
+    print("Tuned:", model.threshold, model.min_region_size, model.max_depth)
+    print("Hyperparameter tuning VERIFICATION SUCCESSFUL!")
