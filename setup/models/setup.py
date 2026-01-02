@@ -44,7 +44,7 @@ def create_quadtree_model_nodes() -> List[ModelNode]:
     """Create a list of QuadTree segmentation model nodes with different classifiers."""
     classifiers = [
         # here we initialize the classifiers
-        CNNModel(),
+        CNNModel(train_epochs=50),
         ViTClassificationModel(),
     ]
 
