@@ -148,11 +148,11 @@ class SwinModel(SegmentationModelInterface):
                 avg_val_loss = val_loss / len(val_loader) if len(val_loader) > 0 else 0
                 epoch_metrics["val_loss"] = float(avg_val_loss)
                 print(
-                    f"Swin Epoch {epoch + 1}/{self.epochs} "
-                    f"Loss: {avg_loss:.4f} Val Loss: {avg_val_loss:.4f}",
+                    f"Epoch {epoch + 1}/{self.epochs}, "
+                    f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}",
                 )
             else:
-                 print(f"Swin Epoch {epoch + 1}/{self.epochs} Loss: {avg_loss:.4f}")
+                 print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
 
             history.append(epoch_metrics)
 
