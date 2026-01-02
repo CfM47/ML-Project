@@ -93,13 +93,18 @@ def _run_automl() -> None:
 
 
 def _run_with_setup(
-    unlabeled_dir: Path,
-    labeled_dir: Path,
-    classification_dataset_dir: Path,
+    unlabeled_dir: str | Path,
+    labeled_dir: str | Path,
+    classification_dataset_dir: str | Path,
     auto_ml_cache_dir: Path,
 ) -> None:
     """Use setup to run Auto-ML."""
-    dataset = load_dataset_from_directories(unlabeled_dir, labeled_dir)
+    unlabeled_dir = Path(unlabeled_dir)
+    labeled_dir = Path(labeled_dir)
+    classification_dataset_dir = Path(classification_dataset_dir)
+    auto_ml_cache_dir = Path(auto_ml_cache_dir)
+
+    dataset = load_dataset_from_directories(Path(unlabeled_dir), labeled_dir)
 
     augmentators = get_augmentator_nodes()
     models = get_model_nodes(classification_dataset_dir)
