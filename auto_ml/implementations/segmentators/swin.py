@@ -109,7 +109,7 @@ class SwinModel(SegmentationModelInterface):
 
             avg_loss = epoch_loss / len(dataloader) if len(dataloader) > 0 else 0
             total_loss = float(avg_loss)
-            print(f"Swin Epoch {epoch + 1}/{self.epochs} Loss: {avg_loss:.4f}")
+            print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
 
         return MetricsResultInterface(
             loss=total_loss,
