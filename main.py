@@ -92,16 +92,14 @@ def _run_automl() -> None:
     print("\n=== AUTOML VERIFICATION SUCCESSFUL! ===")
 
 
-def _run_with_setup() -> None:
+def _run_with_setup(
+    unlabeled_dir: Path, labeled_dir: Path, classification_dataset_dir: Path
+) -> None:
     """Use setup to run Auto-ML."""
-    base_dir = Path(".")
-    input_dir = base_dir / "vega_3_tescan_unlabeled_images"
-    target_dir = base_dir / "vega_3_tescan_labeled_images"
-
-    dataset = load_dataset_from_directories(input_dir, target_dir)
+    dataset = load_dataset_from_directories(unlabeled_dir, labeled_dir)
 
     augmentators = get_augmentator_nodes()
-    models = get_model_nodes()
+    models = get_model_nodes(classification_dataset_dir)
     evaluator = get_evaluator_node(dataset)
 
     automl = AutoML()
