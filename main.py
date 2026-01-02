@@ -96,7 +96,7 @@ def _run_with_setup(
     unlabeled_dir: Path,
     labeled_dir: Path,
     classification_dataset_dir: Path,
-    auto_ml_cahce_dir: Path,
+    auto_ml_cache_dir: Path,
 ) -> None:
     """Use setup to run Auto-ML."""
     dataset = load_dataset_from_directories(unlabeled_dir, labeled_dir)
@@ -105,7 +105,7 @@ def _run_with_setup(
     models = get_model_nodes(classification_dataset_dir)
     evaluator = get_evaluator_node(dataset)
 
-    automl = AutoML(cache_dir=auto_ml_cahce_dir)
+    automl = AutoML(cache_dir=auto_ml_cache_dir)
     automl.run_experiment(dataset, augmentators, models, evaluator_node=evaluator)
 
 
