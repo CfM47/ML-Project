@@ -1,5 +1,6 @@
 """Pipeline node implementations."""
 
+import copy
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -10,6 +11,7 @@ from auto_ml.interfaces import (
     EvaluatorInterface,
     EvaluatorNodeInterface,
     MaskPair,
+    MetricsResultInterface,
     ModelNodeInterface,
     SegmentationDatasetInterface,
     SegmentationModelInterface,
@@ -166,17 +168,25 @@ class ModelNode(ModelNodeInterface):
 
         """
         all_mask_pairs: List[List[MaskPair]] = []
+        self.last_training_metrics: List[MetricsResultInterface] = []
 
         for i, (train_dataset, val_dataset) in enumerate(dataset_pairs):
             print(f"Processing split {i + 1}/{len(dataset_pairs)}...")
 
             # Train model
             print(f"  Training on {len(train_dataset)} samples...")
-            _ = self.model.train(train_dataset)
+
+            # Create a fresh copy of the model for this fold to ensure
+            # training starts from scratch
+            fold_model = copy.deepcopy(self.model)
+
+            # Pass validation dataset to allow tracking of validation metrics per epoch
+            metrics = fold_model.train(train_dataset, validation_dataset=val_dataset)
+            self.last_training_metrics.append(metrics)
 
             # Evaluate on validation set
             print(f"  Evaluating on {len(val_dataset)} samples...")
-            mask_pairs = self.model.evaluate(val_dataset)
+            mask_pairs = fold_model.evaluate(val_dataset)
 
             all_mask_pairs.append(mask_pairs)
             print(f"  Split {i + 1}: Collected {len(mask_pairs)} mask pairs")

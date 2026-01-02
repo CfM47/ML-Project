@@ -77,12 +77,17 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         self.search_space = search_space
         self.n_trials = n_trials
 
-    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
+    def train(
+        self,
+        dataset: SegmentationDatasetInterface,
+        validation_dataset: SegmentationDatasetInterface | None = None,
+    ) -> MetricsResultInterface:
         """
         Train the quadtree segmenter. Optionally performs hyperparameter tuning.
 
         Args:
             dataset: Segmentation dataset for training and tuning.
+            validation_dataset: Optional validation dataset.
 
         Returns:
             MetricsResultInterface containing segmentation quality metrics.

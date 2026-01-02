@@ -21,7 +21,7 @@ def _run_automl() -> None:
     print("=== Starting AutoML Verification ===")
 
     # Paths
-    base_dir = Path(".")
+    base_dir = Path("pictures")
     input_dir = base_dir / "vega_3_tescan_unlabeled_images"
     target_dir = base_dir / "vega_3_tescan_labeled_images"
 
