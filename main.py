@@ -12,6 +12,9 @@ from auto_ml.implementations import (
     ViTModel,
     load_dataset_from_directories,
 )
+from setup.augmentators.setup import get_augmentator_nodes
+from setup.evaluator.setup import get_evaluator_node
+from setup.models.setup import get_model_nodes
 
 
 def _run_automl() -> None:
@@ -87,6 +90,22 @@ def _run_automl() -> None:
     print(automl.get_summary())
 
     print("\n=== AUTOML VERIFICATION SUCCESSFUL! ===")
+
+
+def _run_with_setup() -> None:
+    """Use setup to run Auto-ML."""
+    base_dir = Path(".")
+    input_dir = base_dir / "vega_3_tescan_unlabeled_images"
+    target_dir = base_dir / "vega_3_tescan_labeled_images"
+
+    dataset = load_dataset_from_directories(input_dir, target_dir)
+
+    augmentators = get_augmentator_nodes()
+    models = get_model_nodes()
+    evaluator = get_evaluator_node(dataset)
+
+    automl = AutoML()
+    automl.run_experiment(dataset, augmentators, models, evaluator_node=evaluator)
 
 
 if __name__ == "__main__":
