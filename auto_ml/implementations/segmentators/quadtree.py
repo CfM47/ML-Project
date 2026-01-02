@@ -1,6 +1,5 @@
 """Quadtree-based segmentation model implementation."""
 
-
 import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
@@ -37,8 +36,8 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
     def __init__(
         self,
         classifier: ClassificationModelInterface,
-        classifier_dataset_dir: Optional[Path],
-        threshold: float,
+        classifier_dataset_dir: Optional[Path] = None,
+        threshold: float = 0.5,
         min_region_size: int = 1,
         max_depth: Optional[int] = None,
         optimize_metric: Optional[str] = None,
@@ -134,10 +133,12 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         # Initial Solution (Random Start)
         current_threshold = np.random.uniform(threshold_range[0], threshold_range[1])
         current_min_size = np.random.randint(
-            min_region_range[0], min_region_range[1] + 1,
+            min_region_range[0],
+            min_region_range[1] + 1,
         )
         current_max_depth = np.random.randint(
-            max_depth_range[0], max_depth_range[1] + 1,
+            max_depth_range[0],
+            max_depth_range[1] + 1,
         )
 
         current_params: _BestParams = {
@@ -156,16 +157,16 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         current_metric_val = -1.0
 
         if self.optimize_metric in initial_metrics.to_dict():
-             val = initial_metrics.to_dict()[self.optimize_metric]
-             if isinstance(val, (int, float)):
-                 current_metric_val = val
+            val = initial_metrics.to_dict()[self.optimize_metric]
+            if isinstance(val, (int, float)):
+                current_metric_val = val
 
         best_params = current_params.copy()
         best_metric = current_metric_val
 
         # SA Hyperparameters
         temp = 1.0
-        alpha = 0.90 # Cooling rate
+        alpha = 0.90  # Cooling rate
 
         # SA Loop
         for i in range(self.n_trials):
@@ -186,7 +187,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
 
             neighbor_metric_val = metrics_dict[self.optimize_metric]
             if not isinstance(neighbor_metric_val, (int, float)):
-                 break
+                break
 
             # Acceptance Probability (Maximization)
             # if neighbor is better, prob > 1, algorithm accepts
@@ -194,7 +195,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             delta = neighbor_metric_val - current_metric_val
 
             if delta > 0:
-                acceptance_prob = 2.0 # Always accept
+                acceptance_prob = 2.0  # Always accept
             else:
                 # Avoid overflow/underflow if temp is too low or delta too neg
                 try:
@@ -336,7 +337,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         # Min Region: Perturb by +/- 1 or Stay
         mr_range = ranges["min_region_size"]
         mr_current = new_params["min_region_size"]
-        mr_step = np.random.randint(-2, 3) # -2, -1, 0, 1, 2
+        mr_step = np.random.randint(-2, 3)  # -2, -1, 0, 1, 2
         mr_new = mr_current + mr_step
         new_params["min_region_size"] = int(
             np.clip(mr_new, mr_range[0], mr_range[1]),
@@ -345,10 +346,10 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         # Max Depth: Perturb by +/- 1
         md_range = ranges["max_depth"]
         if new_params["max_depth"] is not None:
-             md_current = new_params["max_depth"]
-             md_step = np.random.randint(-1, 2)
-             md_new = md_current + md_step
-             new_params["max_depth"] = int(np.clip(md_new, md_range[0], md_range[1]))
+            md_current = new_params["max_depth"]
+            md_step = np.random.randint(-1, 2)
+            md_new = md_current + md_step
+            new_params["max_depth"] = int(np.clip(md_new, md_range[0], md_range[1]))
 
         return new_params
 

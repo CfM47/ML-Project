@@ -12,6 +12,9 @@ from auto_ml.implementations import (
     ViTModel,
     load_dataset_from_directories,
 )
+from setup.augmentators.setup import get_augmentator_nodes
+from setup.evaluator.setup import get_evaluator_node
+from setup.models.setup import get_model_nodes
 
 
 def _run_automl() -> None:
@@ -87,6 +90,23 @@ def _run_automl() -> None:
     print(automl.get_summary())
 
     print("\n=== AUTOML VERIFICATION SUCCESSFUL! ===")
+
+
+def _run_with_setup(
+    unlabeled_dir: Path,
+    labeled_dir: Path,
+    classification_dataset_dir: Path,
+    auto_ml_cahce_dir: Path,
+) -> None:
+    """Use setup to run Auto-ML."""
+    dataset = load_dataset_from_directories(unlabeled_dir, labeled_dir)
+
+    augmentators = get_augmentator_nodes()
+    models = get_model_nodes(classification_dataset_dir)
+    evaluator = get_evaluator_node(dataset)
+
+    automl = AutoML(cache_dir=auto_ml_cahce_dir)
+    automl.run_experiment(dataset, augmentators, models, evaluator_node=evaluator)
 
 
 if __name__ == "__main__":

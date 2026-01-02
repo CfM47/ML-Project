@@ -116,7 +116,7 @@ def load_dataset_from_directories(
 
 def load_classification_dataset_from_dir(
     input_path: Path,
-    class_subdirs: List[str] = ["brittle", "ductile", "mixed"],
+    class_subdirs: List[str] = ["Brittle", "Ductile", "Mixed"],
     target_size: Tuple[int, int] = (512, 512),
 ) -> ClassificationDatasetInterface:
     """
