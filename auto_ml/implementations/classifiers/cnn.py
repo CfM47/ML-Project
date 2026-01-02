@@ -28,6 +28,7 @@ class CNNModel(ClassificationModelInterface):
         channels: int = 1,
         base_filters: int = 32,
         dropout: float = 0.5,
+        num_blocks: int = 3,
         device: str = "auto",
         train_epochs: int = 10,
         train_batch_size: int = 16,
@@ -41,6 +42,10 @@ class CNNModel(ClassificationModelInterface):
             channels: Number of input channels (1 for grayscale, 3 for RGB).
             base_filters: Base number of filters (doubled at each block).
             dropout: Dropout rate before final classification layer.
+            num_blocks: Number of convolutional blocks. Each block halves the
+                spatial dimensions via MaxPool2d, so the minimum supported
+                input size is 2^num_blocks × 2^num_blocks pixels.
+                Examples: num_blocks=3 → min 8×8, num_blocks=5 → min 32×32.
             device: Device to run the model on ("auto", "cuda", "mps", "cpu").
             train_epochs: Number of training epochs.
             train_batch_size: Training batch size.
@@ -49,6 +54,7 @@ class CNNModel(ClassificationModelInterface):
         """
         self.num_classes = num_classes
         self.channels = channels
+        self.num_blocks = num_blocks
         self.train_epochs = train_epochs
         self.train_batch_size = train_batch_size
         self.train_learning_rate = train_learning_rate
@@ -69,6 +75,7 @@ class CNNModel(ClassificationModelInterface):
             channels=channels,
             base_filters=base_filters,
             dropout=dropout,
+            num_blocks=num_blocks,
         ).to(self.device)
 
         self.model.eval()
