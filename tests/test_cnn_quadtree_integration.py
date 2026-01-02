@@ -98,11 +98,13 @@ def test_cnn_binary_classifier_training() -> None:
     set_deterministic_seed(42)
 
     # Create CNN model with 2 classes for binary classification
+    # Use num_blocks=5 to match original test expectations for 32×32 regions
     cnn_model = CNNModel(
         num_classes=2,
         channels=1,
         base_filters=16,
         dropout=0.1,
+        num_blocks=5,
         device="cpu",
     )
 
@@ -160,12 +162,14 @@ def test_cnn_quadtree_binary_integration() -> None:
     set_deterministic_seed(42)
 
     # 1. Create and train CNN model for binary classification
+    # Use num_blocks=5 to match original test expectations for 256×256 quadrants
     print("Step 1: Creating and training binary CNN model...")
     cnn_model = CNNModel(
         num_classes=2,
         channels=1,
         base_filters=16,
         dropout=0.1,
+        num_blocks=5,
         device="cpu",
     )
 
@@ -267,11 +271,13 @@ def test_cnn_quadtree_deeper_recursion() -> None:
     set_deterministic_seed(42)
 
     # Create and train CNN model for binary classification
+    # Use num_blocks=5 for this test as it requires larger region classification
     cnn_model = CNNModel(
         num_classes=2,
         channels=1,
         base_filters=16,
         dropout=0.1,
+        num_blocks=5,
         device="cpu",
     )
 
@@ -345,6 +351,76 @@ def test_cnn_quadtree_deeper_recursion() -> None:
     print("CNN + Quadtree deeper recursion test PASSED!")
 
 
+def test_cnn_small_input_sizes() -> None:
+    """
+    Test that CNNModel supports small input sizes with configurable num_blocks.
+
+    This test verifies that:
+    1. num_blocks=3 supports 8×8 minimum input
+    2. num_blocks=2 supports 4×4 minimum input
+    3. The model can classify small regions correctly
+    """
+    print("Testing CNN with small input sizes (configurable num_blocks)...")
+
+    set_deterministic_seed(42)
+
+    # Test num_blocks=3 (default, min 8×8)
+    print("Testing num_blocks=3 (min 8×8)...")
+    cnn_3_blocks = CNNModel(
+        num_classes=2,
+        channels=1,
+        base_filters=16,
+        dropout=0.1,
+        num_blocks=3,
+        device="cpu",
+    )
+
+    # Should work with 8×8 input
+    small_region_8x8 = np.full((8, 8), 128, dtype=np.uint8)
+    label, conf = cnn_3_blocks.classify(small_region_8x8, 0, 0, 8, 8)
+    print(f"8×8 region with num_blocks=3: class={label}, confidence={conf:.3f}")
+    assert isinstance(label, int), "Label should be int"
+    assert 0.0 <= conf <= 1.0, "Confidence should be in [0, 1]"
+
+    # Test num_blocks=2 (min 4×4)
+    print("Testing num_blocks=2 (min 4×4)...")
+    cnn_2_blocks = CNNModel(
+        num_classes=2,
+        channels=1,
+        base_filters=16,
+        dropout=0.1,
+        num_blocks=2,
+        device="cpu",
+    )
+
+    # Should work with 4×4 input
+    small_region_4x4 = np.full((4, 4), 128, dtype=np.uint8)
+    label, conf = cnn_2_blocks.classify(small_region_4x4, 0, 0, 4, 4)
+    print(f"4×4 region with num_blocks=2: class={label}, confidence={conf:.3f}")
+    assert isinstance(label, int), "Label should be int"
+    assert 0.0 <= conf <= 1.0, "Confidence should be in [0, 1]"
+
+    # Test num_blocks=5 (original behavior, min 32×32)
+    print("Testing num_blocks=5 (min 32×32)...")
+    cnn_5_blocks = CNNModel(
+        num_classes=2,
+        channels=1,
+        base_filters=16,
+        dropout=0.1,
+        num_blocks=5,
+        device="cpu",
+    )
+
+    # Should work with 32×32 input
+    small_region_32x32 = np.full((32, 32), 128, dtype=np.uint8)
+    label, conf = cnn_5_blocks.classify(small_region_32x32, 0, 0, 32, 32)
+    print(f"32×32 region with num_blocks=5: class={label}, confidence={conf:.3f}")
+    assert isinstance(label, int), "Label should be int"
+    assert 0.0 <= conf <= 1.0, "Confidence should be in [0, 1]"
+
+    print("CNN small input sizes test PASSED!")
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("Running CNN + Quadtree Integration Tests")
@@ -357,6 +433,9 @@ if __name__ == "__main__":
     print()
 
     test_cnn_quadtree_deeper_recursion()
+    print()
+
+    test_cnn_small_input_sizes()
     print()
 
     print("=" * 60)
