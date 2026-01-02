@@ -1,4 +1,4 @@
-"""Combined augmentation node: 1 geometric, 1 photometric, 1 SEM."""
+"""Combined augmentation node: 3 geometric, 1 photometric, 1 SEM."""
 
 from auto_ml.implementations.augmentators.composite import (
     MultiplyDatasetAugmentator,
@@ -7,18 +7,21 @@ from auto_ml.implementations.augmentators.composite import (
 )
 from auto_ml.implementations.augmentators.geometric import (
     HorizontalFlipAugmentator,
+    RotationAugmentator,
+    VerticalFlipAugmentator,
 )
 from auto_ml.implementations.augmentators.photometric import (
     ContrastAugmentator,
 )
 from auto_ml.implementations.augmentators.sem_specific import (
-    ElasticDeformationAugmentator,
+    AdaptiveHistogramEqualizationAugmentator,
 )
 from auto_ml.implementations.nodes import DataAugmentatorNode
 
 
-def get_combined_1geo_1photo_1sem_node(num_copies: int = 1) -> DataAugmentatorNode:
-    """Create a node with 1 geometric, 1 photometric, and 1 SEM augmentation.
+def get_combined_3geo_1photo_1sem_node(num_copies: int = 1) -> DataAugmentatorNode:
+    """
+    Create a node with 3 geometric, 1 photometric, and 1 SEM augmentation.
 
     Args:
         num_copies: Number of augmented copies to create (default: 1).
@@ -29,21 +32,29 @@ def get_combined_1geo_1photo_1sem_node(num_copies: int = 1) -> DataAugmentatorNo
             augmentators=[
                 SequentialAugmentator(
                     augmentators=[
-                        # 1 Geometric augmentation
+                        # Geometric augmentations (independent)
                         RandomApplyAugmentator(
                             augmentator=HorizontalFlipAugmentator(),
                             probability=0.5,
                         ),
+                        RandomApplyAugmentator(
+                            augmentator=VerticalFlipAugmentator(),
+                            probability=0.5,
+                        ),
+                        RandomApplyAugmentator(
+                            augmentator=RotationAugmentator(angle_range=(-15.0, 15.0)),
+                            probability=0.4,
+                        ),
                         # 1 Photometric augmentation
                         RandomApplyAugmentator(
                             augmentator=ContrastAugmentator(contrast_range=(0.8, 1.2)),
-                            probability=0.3,
+                            probability=0.4,
                         ),
                         # 1 SEM augmentation
                         RandomApplyAugmentator(
-                            augmentator=ElasticDeformationAugmentator(
-                                alpha=25.0,
-                                sigma=3.5,
+                            augmentator=AdaptiveHistogramEqualizationAugmentator(
+                                clip_limit=2.0,
+                                tile_grid_size=(8, 8),
                             ),
                             probability=0.6,
                         ),
@@ -53,5 +64,5 @@ def get_combined_1geo_1photo_1sem_node(num_copies: int = 1) -> DataAugmentatorNo
             num_copies=num_copies,
             include_original=True,
         ),
-        name=f"Combined_1Geo_1Photo_1SEM_x{num_copies}",
+        name=f"Combined_3Geo_1Photo_1SEM_x{num_copies}",
     )

@@ -236,7 +236,7 @@ class MultiplyDatasetAugmentator(DataAugmentatorInterface):
         Args:
             augmentators: List of augmentators to apply.
             include_original: Whether to include original samples.
-            multiplier: Number of times to repeat the augmentators list.
+            num_copies: Number of times to repeat the augmentators list.
 
         """
         self.augmentators = augmentators * num_copies
