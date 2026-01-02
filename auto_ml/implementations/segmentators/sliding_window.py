@@ -1,7 +1,7 @@
 """Sliding window-based segmentation model implementation."""
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import numpy as np
 
@@ -197,7 +197,7 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
         )
 
         # Final mask: argmax across class dimension
-        mask = np.argmax(vote_map, axis=2).astype(np.uint8)
+        mask = cast(MaskArray, np.argmax(vote_map, axis=2).astype(np.uint8))
 
         print("[SlidingWindowSegmentationModel._segment_image] Segmentation completed")
         return mask
