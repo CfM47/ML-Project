@@ -1,5 +1,6 @@
 """Test training history tracking."""
 
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
@@ -49,7 +50,7 @@ def test_automl_history_tracking() -> None:
 
     # 3. Run AutoML
     with TemporaryDirectory() as tmp_dir:
-        automl = AutoML(cache_dir=tmp_dir)
+        automl = AutoML(cache_dir=Path(tmp_dir))
         # Verify results
         results = automl.run_experiment(dataset, [aug_node], [model_node])
 
