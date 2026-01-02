@@ -15,13 +15,13 @@ def create_vit_model_node() -> ModelNode:
     vit_model = ViTSegmentationModel(
         epochs=40,
         batch_size=2,
-        dim=256,
-        depth=6,
-        heads=8,
-        mlp_dim=512,
+        dim=512,
+        depth=12,
+        heads=16,
+        mlp_dim=2048,
         device="auto",
     )
-    return ModelNode(model=vit_model, name="ViT_Model_Node")
+    return ModelNode(model=vit_model, name="ViT_Big_Model_Node")
 
 
 def create_swin_model_node() -> ModelNode:
@@ -29,12 +29,12 @@ def create_swin_model_node() -> ModelNode:
     swin_model = SwinModel(
         epochs=40,
         batch_size=2,
-        embed_dim=64,
-        depths=[2, 2, 6, 2],
-        num_heads=[4, 8, 16, 32],
+        embed_dim=128,
+        depths=[2, 2, 18, 2],
+        num_heads=[8, 16, 32, 64],
         device="auto",
     )
-    return ModelNode(model=swin_model, name="Swin_Model_Node")
+    return ModelNode(model=swin_model, name="Swin_Big_Model_Node")
 
 
 def _create_quadtree_model_node(
