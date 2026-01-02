@@ -79,8 +79,8 @@ class HorizontalFlipAugmentator(DataAugmentatorInterface):
         augmented_samples = []
 
         for image, mask in dataset.samples:
-            aug_image = np.fliplr(image)
-            aug_mask = np.fliplr(mask)
+            aug_image = np.ascontiguousarray(np.fliplr(image))
+            aug_mask = np.ascontiguousarray(np.fliplr(mask))
             augmented_samples.append((aug_image, aug_mask))
 
         return SegmentationDatasetInterface.from_pairs(
@@ -100,8 +100,8 @@ class VerticalFlipAugmentator(DataAugmentatorInterface):
         augmented_samples = []
 
         for image, mask in dataset.samples:
-            aug_image = np.flipud(image)
-            aug_mask = np.flipud(mask)
+            aug_image = np.ascontiguousarray(np.flipud(image))
+            aug_mask = np.ascontiguousarray(np.flipud(mask))
             augmented_samples.append((aug_image, aug_mask))
 
         return SegmentationDatasetInterface.from_pairs(
