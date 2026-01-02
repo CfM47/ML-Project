@@ -87,7 +87,10 @@ class DummyClassifier(ClassificationModelInterface):
 
 def test_sliding_window_init() -> None:
     """Test the initialization of SlidingWindowSegmentationModel."""
-    print("Initializing Verification for SlidingWindowSegmentationModel initialization...")
+    print(
+        "Initializing Verification for SlidingWindowSegmentationModel "
+        "initialization...",
+    )
     classifier = DummyClassifier()
 
     # Test valid initialization
@@ -156,9 +159,9 @@ def test_sliding_window_basic_segmentation() -> None:
     # Create test image with 4 quadrants (different brightness)
     dummy_image = np.zeros((image_size, image_size), dtype=np.uint8)
     dummy_image[0 : image_size // 2, 0 : image_size // 2] = 40  # Class 0
-    dummy_image[0 : image_size // 2, image_size // 2 : image_size] = 120  # Class 1
-    dummy_image[image_size // 2 : image_size, 0 : image_size // 2] = 200  # Class 2
-    dummy_image[image_size // 2 : image_size, image_size // 2 : image_size] = 60  # Class 0
+    dummy_image[0 : image_size // 2, image_size // 2 : image_size] = 120
+    dummy_image[image_size // 2 : image_size, 0 : image_size // 2] = 200
+    dummy_image[image_size // 2 : image_size, image_size // 2 : image_size] = 60
 
     dummy_real_mask = np.zeros((image_size, image_size), dtype=np.uint8)
 
@@ -184,10 +187,10 @@ def test_sliding_window_basic_segmentation() -> None:
 
     # Expected mask based on the dummy_image and DummyClassifier logic
     expected_mask = np.zeros((image_size, image_size), dtype=np.uint8)
-    expected_mask[0 : image_size // 2, 0 : image_size // 2] = 0  # 40 -> class 0
-    expected_mask[0 : image_size // 2, image_size // 2 : image_size] = 1  # 120 -> class 1
-    expected_mask[image_size // 2 : image_size, 0 : image_size // 2] = 2  # 200 -> class 2
-    expected_mask[image_size // 2 : image_size, image_size // 2 : image_size] = 0  # 60 -> class 0
+    expected_mask[0 : image_size // 2, 0 : image_size // 2] = 0
+    expected_mask[0 : image_size // 2, image_size // 2 : image_size] = 1
+    expected_mask[image_size // 2 : image_size, 0 : image_size // 2] = 2
+    expected_mask[image_size // 2 : image_size, image_size // 2 : image_size] = 0
 
     assert np.array_equal(predicted_mask, expected_mask)
     print("Basic sliding window segmentation VERIFICATION SUCCESSFUL!")
