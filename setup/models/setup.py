@@ -46,6 +46,7 @@ def _create_quadtree_model_node(
     quadtree_model = QuadtreeSegmentationModel(
         classifier,
         classifier_dataset_dir,
+        min_region_size=8,
         threshold=0.5,
         optimize_metric=optimize_metric,
     )
