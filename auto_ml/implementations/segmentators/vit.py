@@ -30,11 +30,16 @@ class ViTModel(SegmentationModelInterface):
         epochs: int = 10,
         batch_size: int = 4,
         lr: float = 1e-4,
+        dim: int = 768,
+        depth: int = 12,
+        heads: int = 12,
+        mlp_dim: int = 1024,
         device: str = "auto",
     ) -> None:
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        self.dim = dim
 
         if device == "auto":
             self.device = (
@@ -51,10 +56,10 @@ class ViTModel(SegmentationModelInterface):
             image_size=512,
             patch_size=16,
             num_classes=3,
-            dim=768,
-            depth=12,
-            heads=12,
-            mlp_dim=1024,
+            dim=self.dim,
+            depth=depth,
+            heads=heads,
+            mlp_dim=mlp_dim,
             channels=1,  # Warning: Hardcoded for grayscale, should be dynamic if needed
             dropout=0.1,
             emb_dropout=0.1,
