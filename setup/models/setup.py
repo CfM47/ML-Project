@@ -40,7 +40,7 @@ def _create_quadtree_model_node(
     )
 
 
-def create_quadtree_model_nodes() -> List[ModelNode]:
+def create_quadtree_model_nodes(classifier_dataset_dir: Path) -> List[ModelNode]:
     """Create a list of QuadTree segmentation model nodes with different classifiers."""
     classifiers = [
         # here we initialize the classifiers
@@ -50,7 +50,6 @@ def create_quadtree_model_nodes() -> List[ModelNode]:
 
     # change this parameters at taste
     optimize_metric = "f1_score"
-    classifier_dataset_dir = Path("path/to/dataset")
 
     return [
         _create_quadtree_model_node(classifier, classifier_dataset_dir, optimize_metric)
@@ -58,10 +57,10 @@ def create_quadtree_model_nodes() -> List[ModelNode]:
     ]
 
 
-def get_model_nodes() -> List[ModelNode]:
+def get_model_nodes(classifier_dataset_dir: Path) -> List[ModelNode]:
     """Return a list of model nodes for use in Auto-ML."""
     return [
         create_vit_model_node(),
         create_swin_model_node(),
-        *create_quadtree_model_nodes(),
+        *create_quadtree_model_nodes(classifier_dataset_dir),
     ]

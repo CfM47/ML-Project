@@ -16,7 +16,7 @@ class AutoML:
     strategies and models. Includes caching and execution time tracking.
     """
 
-    def __init__(self, cache_dir: str = "automl_cache") -> None:  # noqa: D107
+    def __init__(self, cache_dir: Path = Path("automl_cache")) -> None:  # noqa: D107
         self.results: Dict[str, Any] = {}
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
@@ -94,13 +94,13 @@ class AutoML:
         )
 
     def _get_cached_result(
-        self, augmentator_name: str, model_name: str,
+        self,
+        augmentator_name: str,
+        model_name: str,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve cached result for a specific combination."""
         if self._is_cached(augmentator_name, model_name):
-            result: Dict[str, Any] = self.results_cache[augmentator_name][
-                model_name
-            ]
+            result: Dict[str, Any] = self.results_cache[augmentator_name][model_name]
             return result
         return None
 
@@ -188,11 +188,12 @@ class AutoML:
                     if self._is_cached(aug_name, model_name):
                         print(f"  Training Model Node: {model_name} (cached)")
                         cached_result = self._get_cached_result(
-                            aug_name, model_name,
+                            aug_name,
+                            model_name,
                         )
-                        execution_time = (
-                            self.execution_times_cache[aug_name][model_name]
-                        )
+                        execution_time = self.execution_times_cache[aug_name][
+                            model_name
+                        ]
                         experiment_results[aug_name][model_name] = cached_result
                         print(
                             f"    Loaded from cache "
@@ -250,7 +251,10 @@ class AutoML:
                             ]
 
                         self._cache_result(
-                            aug_name, model_name, result, execution_time,
+                            aug_name,
+                            model_name,
+                            result,
+                            execution_time,
                         )
                         print(
                             f"    Cached result "
