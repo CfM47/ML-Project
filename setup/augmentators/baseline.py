@@ -6,7 +6,8 @@ from auto_ml.implementations.nodes import DataAugmentatorNode
 
 
 def get_baseline_node(num_copies: int = 1) -> DataAugmentatorNode:
-    """Create a baseline node with no augmentation for comparison.
+    """
+    Create a baseline node with no augmentation for comparison.
 
     Args:
         num_copies: Number of copies to create (default: 1).
