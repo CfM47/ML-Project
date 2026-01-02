@@ -1,12 +1,14 @@
 from typing import List
 
 from auto_ml.implementations.nodes import DataAugmentatorNode
-from setup.augmentators.baseline import get_baseline_node
 from setup.augmentators.combined_2geo_2photo_1sem import (
     get_combined_2geo_2photo_1sem_node,
 )
 from setup.augmentators.combined_3geo_1photo_1sem import (
     get_combined_3geo_1photo_1sem_node,
+)
+from setup.augmentators.identity import (
+    get_identity_augmentator_node,
 )
 
 
@@ -27,7 +29,7 @@ def get_augmentator_nodes(
 
     """
     return [
-        get_baseline_node(num_copies=baseline_copies),
+        get_identity_augmentator_node(),
         get_combined_2geo_2photo_1sem_node(num_copies=combined_2geo_2photo_1sem_copies),
         get_combined_3geo_1photo_1sem_node(num_copies=combined_3geo_1photo_1sem_copies),
     ]
