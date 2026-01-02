@@ -232,6 +232,9 @@ class ViTModel(ClassificationModelInterface):
             final_loss = epoch_loss / total if total > 0 else 0.0
             final_accuracy = correct / total if total > 0 else 0.0
 
+            # Log progress
+            print(f"Epoch {epoch + 1}/{self.train_epochs}, Loss: {final_loss:.6f}")
+
         # Set model back to eval mode
         self.model.eval()
         return MetricsResultInterface(
