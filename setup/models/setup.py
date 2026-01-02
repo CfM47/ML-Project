@@ -60,7 +60,7 @@ def create_quadtree_model_nodes(classifier_dataset_dir: Path) -> List[ModelNode]
     classifiers = [
         CNNModel(train_epochs=50),
         ViTClassificationModel(
-            epochs=40,
+            train_epochs=40,
             dim=256,
             depth=6,
             heads=8,
