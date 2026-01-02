@@ -93,29 +93,63 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             MetricsResultInterface containing segmentation quality metrics.
 
         """
+        print("[QuadtreeSegmentationModel] Starting training...")
+        print(f"[QuadtreeSegmentationModel] Dataset size: {len(dataset)}")
+
         if self.classifier_dataset_dir is not None:
+            dir_path = self.classifier_dataset_dir
+            print(
+                "[QuadtreeSegmentationModel] Training classifier "
+                f"from: {dir_path}",
+            )
             classifier_dataset = load_classification_dataset_from_dir(
                 self.classifier_dataset_dir,
             )
+            ds_size = len(classifier_dataset)
+            print(
+                "[QuadtreeSegmentationModel] Classifier "
+                f"dataset size: {ds_size}",
+            )
             self.classifier.train(classifier_dataset)
+            print("[QuadtreeSegmentationModel] Classifier training completed")
+        else:
+            print("[QuadtreeSegmentationModel] Using pre-trained classifier")
         # else, assume classifier is already trained,
         # this is needed for tests that check this method not to break
 
         if not self.optimize_metric:
+            print(
+                "[QuadtreeSegmentationModel] No hyperparameter "
+                "optimization requested",
+            )
             predicted_real_pairs = self.evaluate(dataset)
             metrics = self._compute_metrics(predicted_real_pairs)
+            print(
+                "[QuadtreeSegmentationModel] Final metrics - "
+                f"Accuracy: {metrics.accuracy:.4f}, "
+                f"Loss: {metrics.loss:.4f}",
+            )
             return metrics
 
         # hyperparameter tunning
+        print("[QuadtreeSegmentationModel] Starting hyperparameter tuning...")
+        print(f"[QuadtreeSegmentationModel] Optimize metric: {self.optimize_metric}")
+        print(f"[QuadtreeSegmentationModel] Number of trials: {self.n_trials}")
         if self.search_space:
             threshold_range = self.search_space.get("threshold", (0.5, 0.9))
-            min_region_range = self.search_space.get("min_region_size", (4, 16))
+            min_region_range = self.search_space.get("min_region_size", (8, 32))
             max_depth_range = self.search_space.get("max_depth", (4, 8))
+            print("[QuadtreeSegmentationModel] Using custom search space")
         else:
             # simple default ranges
             threshold_range = (0.5, 0.9)
-            min_region_range = (4, 16)
+            min_region_range = (8, 32)
             max_depth_range = (4, 8)
+            print("[QuadtreeSegmentationModel] Using default search space")
+
+        print(f"[QuadtreeSegmentationModel] Threshold range: {threshold_range}")
+        print(f"[QuadtreeSegmentationModel] Min region size range: {min_region_range}")
+        print(f"[QuadtreeSegmentationModel] Max depth range: {max_depth_range}")
 
         # Split dataset in train/val just for tunning
         n = len(dataset)
@@ -126,6 +160,10 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         val_indices = indices[:val_size]
         val_dataset = SegmentationDatasetInterface(
             [dataset.samples[i] for i in val_indices],
+        )
+        print(
+            "[QuadtreeSegmentationModel] Split dataset: "
+            f"validation size = {val_size} samples",
         )
 
         # Simulated Annealing Configuration
@@ -152,11 +190,17 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             "max_depth": current_max_depth,
         }
 
+        print("[QuadtreeSegmentationModel] Initial random solution:")
+        print(f"  - threshold: {current_threshold:.4f}")
+        print(f"  - min_region_size: {current_min_size}")
+        print(f"  - max_depth: {current_max_depth}")
+
         # We need an initial metric for SA to compare against
         self.threshold = current_threshold
         self.min_region_size = current_min_size
         self.max_depth = current_max_depth
 
+        print("[QuadtreeSegmentationModel] Evaluating initial solution...")
         initial_pairs = self.evaluate(val_dataset)
         initial_metrics = self._compute_metrics(initial_pairs)
         current_metric_val = -1.0
@@ -165,6 +209,10 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             val = initial_metrics.to_dict()[self.optimize_metric]
             if isinstance(val, (int, float)):
                 current_metric_val = val
+                print(
+                    "[QuadtreeSegmentationModel] Initial "
+                    f"{self.optimize_metric}: {current_metric_val:.4f}",
+                )
 
         best_params = current_params.copy()
         best_metric = current_metric_val
@@ -173,10 +221,26 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
         temp = 1.0
         alpha = 0.90  # Cooling rate
 
+        print(
+            "[QuadtreeSegmentationModel] Starting Simulated "
+            f"Annealing loop (alpha={alpha})",
+        )
+        print("-" * 80)
+
         # SA Loop
         for i in range(self.n_trials):
+            print(
+                "[QuadtreeSegmentationModel] Trial "
+                f"{i+1}/{self.n_trials} (temp={temp:.4f})",
+            )
             # Generate Neighbor
             neighbor_params = self._get_neighbor(current_params, ranges)
+            print(
+                "  Generated neighbor: "
+                f"threshold={neighbor_params['threshold']:.4f}, "
+                f"min_region_size={neighbor_params['min_region_size']}, "
+                f"max_depth={neighbor_params['max_depth']}",
+            )
 
             # Evaluate Neighbor
             self.threshold = neighbor_params["threshold"]
@@ -188,46 +252,92 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             metrics_dict = metrics.to_dict()
 
             if self.optimize_metric not in metrics_dict:
+                print(
+                    "[QuadtreeSegmentationModel] Metric "
+                    f"'{self.optimize_metric}' not found. Stopping.",
+                )
                 break
 
             neighbor_metric_val = metrics_dict[self.optimize_metric]
             if not isinstance(neighbor_metric_val, (int, float)):
+                print("[QuadtreeSegmentationModel] Invalid metric type. Stopping.")
                 break
+
+            print(f"  Neighbor {self.optimize_metric}: {neighbor_metric_val:.4f}")
 
             # Acceptance Probability (Maximization)
             # if neighbor is better, prob > 1, algorithm accepts
             # if worse, prob < 1, algorithm accepts with probability
             delta = neighbor_metric_val - current_metric_val
+            print(f"  Delta: {delta:.4f}")
 
             if delta > 0:
                 acceptance_prob = 2.0  # Always accept
+                print("  ✓ Better solution found! Accepting.")
             else:
                 # Avoid overflow/underflow if temp is too low or delta too neg
                 try:
                     acceptance_prob = math.exp(delta / temp)
                 except OverflowError:
                     acceptance_prob = 0.0
+                print(f"  Acceptance probability: {acceptance_prob:.4f}")
 
             if delta > 0 or np.random.rand() < acceptance_prob:
                 current_params = neighbor_params
                 current_metric_val = neighbor_metric_val
+                print(
+                    f"  ✓ Solution accepted. Current "
+                    f"{self.optimize_metric}: {current_metric_val:.4f}",
+                )
+            else:
+                print(
+                    f"  ✗ Solution rejected. Current "
+                    f"{self.optimize_metric}: {current_metric_val:.4f}",
+                )
 
             # Keep track of global best
             if current_metric_val > best_metric:
                 best_metric = current_metric_val
                 best_params = current_params.copy()
+                print(f"  ⭐ NEW BEST FOUND! {self.optimize_metric}: {best_metric:.4f}")
+                print(f"    Best params: threshold={best_params['threshold']:.4f}, "
+                      f"min_region_size={best_params['min_region_size']}, "
+                      f"max_depth={best_params['max_depth']}")
 
             # Cool down
             temp *= alpha
+            print("-" * 80)
 
         # update with best configuration
+        print("\n[QuadtreeSegmentationModel] Hyperparameter tuning completed!")
+        print(
+            "[QuadtreeSegmentationModel] Best "
+            f"{self.optimize_metric}: {best_metric:.4f}",
+        )
+        print("[QuadtreeSegmentationModel] Best parameters:")
+        print(f"  - threshold: {best_params['threshold']:.4f}")
+        print(f"  - min_region_size: {best_params['min_region_size']}")
+        print(f"  - max_depth: {best_params['max_depth']}")
+
         self.threshold = best_params["threshold"]
         self.min_region_size = best_params["min_region_size"]
         self.max_depth = best_params["max_depth"]
 
         # evaluate over the whole dataset
+        print(
+            "[QuadtreeSegmentationModel] Evaluating best "
+            "configuration on full dataset...",
+        )
         final_pairs = self.evaluate(dataset)
         final_metric = self._compute_metrics(final_pairs)
+
+        print("[QuadtreeSegmentationModel] Final metrics on full dataset:")
+        print(f"  - Accuracy: {final_metric.accuracy:.4f}")
+        print(f"  - Loss: {final_metric.loss:.4f}")
+        print(f"  - IoU: {final_metric.iou:.4f}")
+        print(f"  - Precision: {final_metric.precision:.4f}")
+        print(f"  - Recall: {final_metric.recall:.4f}")
+        print(f"  - F1 Score: {final_metric.f1_score:.4f}")
 
         return final_metric
 
@@ -242,13 +352,29 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             List of (predicted_mask, real_mask) tuples.
 
         """
-        return [(self._segment_image(image), real_mask) for image, real_mask in dataset]
+        print(
+            "[QuadtreeSegmentationModel.evaluate] Evaluating "
+            f"{len(dataset)} images...",
+        )
+        results = []
+        for idx, (image, real_mask) in enumerate(dataset):
+            if (idx + 1) % max(1, len(dataset) // 10) == 0 or idx == 0:
+                print(f"  Processing image {idx + 1}/{len(dataset)}")
+            results.append((self._segment_image(image), real_mask))
+        print("[QuadtreeSegmentationModel.evaluate] Evaluation completed")
+        return results
 
     def _segment_image(
         self,
         image: ImageArray,
     ) -> MaskArray:
         """Segment a single image using recursive quadtree splitting."""
+        print(
+            "[QuadtreeSegmentationModel._segment_image] Starting "
+            f"segmentation (threshold={self.threshold:.4f}, "
+            f"min_region_size={self.min_region_size}, "
+            f"max_depth={self.max_depth})",
+        )
         mask = np.zeros((512, 512), dtype=np.uint8)
 
         self._segment_region(
@@ -261,6 +387,7 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             depth=0,
         )
 
+        print("[QuadtreeSegmentationModel._segment_image] Segmentation completed")
         return mask
 
     def _segment_region(
@@ -288,7 +415,24 @@ class QuadtreeSegmentationModel(SegmentationModelInterface):
             height=height,
         )
 
+        indent = "  " * depth
+        print(
+            f"{indent}[Depth {depth}] Region ({x}, {y}, {width}x{height}): "
+            f"label={label}, confidence={confidence:.4f}",
+        )
+
         if self._should_stop_recursion(confidence, width, height, depth):
+            reason = ""
+            if confidence >= self.threshold:
+                reason = "confidence threshold met"
+            elif width <= self.min_region_size or height <= self.min_region_size:
+                reason = "min region size reached"
+            elif self.max_depth is not None and depth >= self.max_depth:
+                reason = "max depth reached"
+            print(
+                f"{indent}  → Stopping recursion ({reason}). "
+                f"Filling with label {label}",
+            )
             mask[y : y + height, x : x + width] = label
             return
 
