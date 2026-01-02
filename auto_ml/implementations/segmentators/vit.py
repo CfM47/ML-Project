@@ -1,6 +1,6 @@
 """ViT model implementation for segmentation."""
 
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import torch
@@ -60,7 +60,11 @@ class ViTModel(SegmentationModelInterface):
             emb_dropout=0.1,
         ).to(self.device)
 
-    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
+    def train(
+        self,
+        dataset: SegmentationDatasetInterface,
+        validation_dataset: SegmentationDatasetInterface | None = None,
+    ) -> MetricsResultInterface:
         """Train the model."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(
@@ -75,10 +79,13 @@ class ViTModel(SegmentationModelInterface):
         self.model.train()
 
         total_loss: float = 0
+        history: List[Dict[str, float]] = []
 
         # Simplified training loop for AutoML context
         for epoch in range(self.epochs):
             epoch_loss = 0
+            self.model.train()
+
             # iterate over batches
             for inputs, masks in dataloader:
                 inputs = inputs.to(self.device)
@@ -110,6 +117,7 @@ class ViTModel(SegmentationModelInterface):
             loss=total_loss,
             accuracy=0.0,  # Placeholder
             additional_metrics={"epochs_trained": self.epochs},
+            history=history,
         )
 
     def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
