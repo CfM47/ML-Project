@@ -228,6 +228,7 @@ class MultiplyDatasetAugmentator(DataAugmentatorInterface):
         self,
         augmentators: List[DataAugmentatorInterface],
         include_original: bool = True,
+        num_copies: int = 1,
     ) -> None:
         """
         Initialize the multiply dataset augmentator.
@@ -235,9 +236,10 @@ class MultiplyDatasetAugmentator(DataAugmentatorInterface):
         Args:
             augmentators: List of augmentators to apply.
             include_original: Whether to include original samples.
+            multiplier: Number of times to repeat the augmentators list.
 
         """
-        self.augmentators = augmentators
+        self.augmentators = augmentators * num_copies
         self.include_original = include_original
 
     def augment(
@@ -255,13 +257,13 @@ class MultiplyDatasetAugmentator(DataAugmentatorInterface):
             aug_dataset = augmentator.augment(dataset)
             all_samples.extend(aug_dataset.samples)
 
-        multiplier = len(self.augmentators) + (1 if self.include_original else 0)
+        total_multiplier = len(self.augmentators) + (1 if self.include_original else 0)
 
         return SegmentationDatasetInterface.from_pairs(
             all_samples,
             metadata={
                 **dataset.metadata,
                 "augmentation": "multiply_dataset",
-                "multiplier": multiplier,
+                "multiplier": total_multiplier,
             },
         )
