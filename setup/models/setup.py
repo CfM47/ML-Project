@@ -75,7 +75,7 @@ def create_quadtree_model_nodes(classifier_dataset_dir: Path) -> List[ModelNode]
 def get_model_nodes(classifier_dataset_dir: Path) -> List[ModelNode]:
     """Return a list of model nodes for use in Auto-ML."""
     return [
-        create_vit_model_node(),
+        # create_vit_model_node(),
         create_swin_model_node(),
         *create_quadtree_model_nodes(classifier_dataset_dir),
     ]
