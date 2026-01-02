@@ -12,7 +12,7 @@ This module defines all the interfaces for the AutoML training pipeline:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -190,6 +190,7 @@ class MetricsResultInterface:
     recall: float = 0.0
     f1_score: float = 0.0
     additional_metrics: Dict[str, Any] = field(default_factory=dict)
+    history: List[Dict[str, float]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to a dictionary."""
@@ -200,6 +201,7 @@ class MetricsResultInterface:
             "precision": self.precision,
             "recall": self.recall,
             "f1_score": self.f1_score,
+            "history": self.history,
             **self.additional_metrics,
         }
 
@@ -672,12 +674,17 @@ class SegmentationModelInterface(ABC):
     """
 
     @abstractmethod
-    def train(self, dataset: "SegmentationDatasetInterface") -> MetricsResultInterface:
+    def train(
+        self,
+        dataset: "SegmentationDatasetInterface",
+        validation_dataset: Optional["SegmentationDatasetInterface"] = None,
+    ) -> MetricsResultInterface:
         """
         Train the model on the provided dataset.
 
         Args:
             dataset: The training dataset.
+            validation_dataset: Optional validation dataset for tracking progress.
 
         Returns:
             MetricsResultInterface containing training metrics.

@@ -21,7 +21,7 @@ def _run_automl() -> None:
     print("=== Starting AutoML Verification ===")
 
     # Paths
-    base_dir = Path(".")
+    base_dir = Path("pictures")
     input_dir = base_dir / "vega_3_tescan_unlabeled_images"
     target_dir = base_dir / "vega_3_tescan_labeled_images"
 
@@ -92,19 +92,25 @@ def _run_automl() -> None:
     print("\n=== AUTOML VERIFICATION SUCCESSFUL! ===")
 
 
-def _run_with_setup() -> None:
+def _run_with_setup(
+    unlabeled_dir: str | Path,
+    labeled_dir: str | Path,
+    classification_dataset_dir: str | Path,
+    auto_ml_cache_dir: Path,
+) -> None:
     """Use setup to run Auto-ML."""
-    base_dir = Path(".")
-    input_dir = base_dir / "vega_3_tescan_unlabeled_images"
-    target_dir = base_dir / "vega_3_tescan_labeled_images"
+    unlabeled_dir = Path(unlabeled_dir)
+    labeled_dir = Path(labeled_dir)
+    classification_dataset_dir = Path(classification_dataset_dir)
+    auto_ml_cache_dir = Path(auto_ml_cache_dir)
 
-    dataset = load_dataset_from_directories(input_dir, target_dir)
+    dataset = load_dataset_from_directories(Path(unlabeled_dir), labeled_dir)
 
     augmentators = get_augmentator_nodes()
-    models = get_model_nodes()
-    evaluator = get_evaluator_node()
+    models = get_model_nodes(classification_dataset_dir)
+    evaluator = get_evaluator_node(dataset)
 
-    automl = AutoML()
+    automl = AutoML(cache_dir=auto_ml_cache_dir)
     automl.run_experiment(dataset, augmentators, models, evaluator_node=evaluator)
 
 

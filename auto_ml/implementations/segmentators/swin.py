@@ -1,6 +1,6 @@
 """Swin Transformer model implementation for segmentation."""
 
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import torch
@@ -69,7 +69,11 @@ class SwinModel(SegmentationModelInterface):
             channels=1,
         ).to(self.device)
 
-    def train(self, dataset: SegmentationDatasetInterface) -> MetricsResultInterface:
+    def train(
+        self,
+        dataset: SegmentationDatasetInterface,
+        validation_dataset: SegmentationDatasetInterface | None = None,
+    ) -> MetricsResultInterface:
         """Train the model."""
         pytorch_dataset = InMemoryPyTorchDataset(dataset)
         dataloader = DataLoader(
@@ -84,9 +88,12 @@ class SwinModel(SegmentationModelInterface):
         self.model.train()
 
         total_loss: float = 0
+        history: List[Dict[str, float]] = []
 
         for epoch in range(self.epochs):
             epoch_loss = 0
+            self.model.train()  # Ensure in train mode
+
             for inputs, masks in dataloader:
                 inputs = inputs.to(self.device)
                 masks = masks.to(self.device)
@@ -109,12 +116,51 @@ class SwinModel(SegmentationModelInterface):
 
             avg_loss = epoch_loss / len(dataloader) if len(dataloader) > 0 else 0
             total_loss = float(avg_loss)
-            print(f"Swin Epoch {epoch + 1}/{self.epochs} Loss: {avg_loss:.4f}")
+
+            epoch_metrics = {
+                "epoch": epoch + 1,
+                "train_loss": float(avg_loss),
+            }
+
+            # Validation Step
+            if validation_dataset:
+                self.model.eval()
+                val_dataset_torch = InMemoryPyTorchDataset(validation_dataset)
+                val_loader = DataLoader(val_dataset_torch, batch_size=1, shuffle=False)
+                val_loss = 0.0
+
+                with torch.no_grad():
+                    for v_inputs, v_masks in val_loader:
+                        v_inputs = v_inputs.to(self.device)
+                        v_masks = v_masks.to(self.device)
+
+                        if v_inputs.shape[1] != 1:
+                            v_inputs = (
+                                v_inputs[:, 0:1, :, :] * 0.299
+                                + v_inputs[:, 1:2, :, :] * 0.587
+                                + v_inputs[:, 2:3, :, :] * 0.114
+                            )
+
+                        v_outputs = self.model(v_inputs)
+                        v_loss = criterion(v_outputs, v_masks)
+                        val_loss += v_loss.item()
+
+                avg_val_loss = val_loss / len(val_loader) if len(val_loader) > 0 else 0
+                epoch_metrics["val_loss"] = float(avg_val_loss)
+                print(
+                    f"Epoch {epoch + 1}/{self.epochs}, "
+                    f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}",
+                )
+            else:
+                 print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
+
+            history.append(epoch_metrics)
 
         return MetricsResultInterface(
             loss=total_loss,
             accuracy=0.0,
             additional_metrics={"epochs_trained": self.epochs},
+            history=history,
         )
 
     def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
