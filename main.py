@@ -97,8 +97,23 @@ def _run_with_setup(
     labeled_dir: str | Path,
     classification_dataset_dir: str | Path,
     auto_ml_cache_dir: str | Path,
+    augmentator_indices: list[int] | None = None,
+    model_indices: list[int] | None = None,
 ) -> None:
-    """Use setup to run Auto-ML."""
+    """
+    Use setup to run Auto-ML.
+
+    Args:
+        unlabeled_dir: Directory containing unlabeled images.
+        labeled_dir: Directory containing labeled images.
+        classification_dataset_dir: Directory for classification dataset.
+        auto_ml_cache_dir: Directory for AutoML cache.
+        augmentator_indices: Optional list of indices to filter augmentator nodes.
+            If None, all augmentators are used.
+        model_indices: Optional list of indices to filter model nodes.
+            If None, all models are used.
+
+    """
     unlabeled_dir = Path(unlabeled_dir)
     labeled_dir = Path(labeled_dir)
     classification_dataset_dir = Path(classification_dataset_dir)
@@ -107,7 +122,13 @@ def _run_with_setup(
     dataset = load_dataset_from_directories(Path(unlabeled_dir), labeled_dir)
 
     augmentators = get_augmentator_nodes()
+    if augmentator_indices is not None:
+        augmentators = [augmentators[i] for i in augmentator_indices]
+
     models = get_model_nodes(classification_dataset_dir)
+    if model_indices is not None:
+        models = [models[i] for i in model_indices]
+
     evaluator = get_evaluator_node(dataset)
 
     automl = AutoML(cache_dir=auto_ml_cache_dir)
