@@ -96,7 +96,7 @@ def _run_with_setup(
     unlabeled_dir: str | Path,
     labeled_dir: str | Path,
     classification_dataset_dir: str | Path,
-    auto_ml_cache_dir: Path,
+    auto_ml_cache_dir: str | Path,
 ) -> None:
     """Use setup to run Auto-ML."""
     unlabeled_dir = Path(unlabeled_dir)
