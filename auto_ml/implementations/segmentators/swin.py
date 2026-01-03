@@ -15,14 +15,14 @@ from auto_ml.interfaces import (
     SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
-from auto_ml.models.swin.model import SwinSegmentation
+from auto_ml.models.swin.segmentation import SwinSegmentation
 
 
 class SwinModel(SegmentationModelInterface):
     """
     Swin Transformer Model implementation for AutoML.
 
-    Wraps the SwinSegmentation model from swin.model.
+    Wraps the SwinSegmentation model from swin.segmentation.
     """
 
     def __init__(  # noqa: D107
@@ -152,7 +152,7 @@ class SwinModel(SegmentationModelInterface):
                     f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}",
                 )
             else:
-                 print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
+                print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
 
             history.append(epoch_metrics)
 
