@@ -187,7 +187,7 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
                     vote_map[y : y + actual_height, x : x + actual_width, label] += 1
                 elif self.aggregation_method == "confidence_weighted":
                     vote_map[
-                        y : y + actual_height, x : x + actual_width, label
+                        y : y + actual_height, x : x + actual_width, label,
                     ] += confidence
 
                 window_count += 1
