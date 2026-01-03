@@ -9,6 +9,7 @@ Provide two entry points:
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import numpy as np
 import torch
 from matplotlib.figure import Figure
 
@@ -18,7 +19,11 @@ from model.swin.config import SwinTrainingConfig
 from model.swin.data import create_augmentator, create_kfold_splits, subsample_dataset
 from model.swin.evaluation import create_evaluator, evaluate_model
 from model.swin.metrics import FoldMetrics, PercentageMetrics
-from model.swin.visualization import plot_results, visualize_predictions
+from model.swin.visualization import (
+    plot_progression_grid,
+    plot_results,
+    visualize_predictions,
+)
 
 # ==============================================================================
 # Entry Points
@@ -28,21 +33,27 @@ from model.swin.visualization import plot_results, visualize_predictions
 def run_percentage_validation(
     train_unlabeled_dir: str | Path,
     train_labeled_dir: str | Path,
+    test_unlabeled_dir: str | Path | None = None,
+    test_labeled_dir: str | Path | None = None,
     config: SwinTrainingConfig | None = None,
-) -> Tuple[List[PercentageMetrics], Figure]:
+) -> Tuple[List[PercentageMetrics], Figure, Figure | None]:
     """
     Run learning curve analysis with k-fold cross-validation.
 
     For each training percentage, run k-fold CV and aggregate metrics.
-    Save plots to output directory.
+    Save plots to output directory. Optionally generate progression visualization
+    if test set is provided.
 
     Args:
         train_unlabeled_dir: Directory with unlabeled training images.
         train_labeled_dir: Directory with labeled training masks.
+        test_unlabeled_dir: Optional directory with unlabeled test images.
+        test_labeled_dir: Optional directory with labeled test masks.
         config: Training configuration. Uses defaults if None.
 
     Returns:
-        Tuple of (list of PercentageMetrics, learning curves Figure).
+        Tuple of (list of PercentageMetrics, learning curves Figure,
+        progression Figure or None if no test set).
 
     """
     if config is None:
@@ -51,7 +62,7 @@ def run_percentage_validation(
     # Setup output directory
     config.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load dataset
+    # Load training dataset
     print("Loading training dataset...")
     train_dataset = load_dataset_from_directories(
         Path(train_unlabeled_dir),
@@ -59,14 +70,51 @@ def run_percentage_validation(
     )
     print(f"Loaded {len(train_dataset)} training samples")
 
+    # Load test dataset if provided
+    test_dataset: SegmentationDatasetInterface | None = None
+    sample_indices: List[int] = []
+    if test_unlabeled_dir and test_labeled_dir:
+        print("Loading test dataset...")
+        test_dataset = load_dataset_from_directories(
+            Path(test_unlabeled_dir),
+            Path(test_labeled_dir),
+        )
+        print(f"Loaded {len(test_dataset)} test samples")
+
+        # Select random sample indices (fixed across percentages)
+        rng = np.random.default_rng(config.seed)
+        num_samples = min(config.num_progression_samples, len(test_dataset))
+        sample_indices = rng.choice(
+            len(test_dataset),
+            size=num_samples,
+            replace=False,
+        ).tolist()
+        print(f"Selected {num_samples} test samples for progression visualization")
+
     # Run validation for each percentage
-    all_metrics = _run_validation_loop(train_dataset, config)
+    all_metrics, best_models = _run_validation_loop(train_dataset, config)
 
-    # Generate and save plots
+    # Generate and save learning curves
     plot_path = config.output_dir / "learning_curves.png"
-    fig = plot_results(all_metrics, output_path=plot_path)
+    learning_curves_fig = plot_results(all_metrics, output_path=plot_path)
 
-    return all_metrics, fig
+    # Generate progression visualization if test set is provided
+    progression_fig: Figure | None = None
+    if test_dataset and sample_indices:
+        predictions_by_percentage = _collect_progression_predictions(
+            best_models,
+            test_dataset,
+            sample_indices,
+        )
+        progression_path = config.output_dir / "progression.png"
+        progression_fig = plot_progression_grid(
+            test_dataset,
+            predictions_by_percentage,
+            sample_indices,
+            output_path=progression_path,
+        )
+
+    return all_metrics, learning_curves_fig, progression_fig
 
 
 def run_final_training(
@@ -143,17 +191,23 @@ def run_final_training(
 def _run_validation_loop(
     train_dataset: SegmentationDatasetInterface,
     config: SwinTrainingConfig,
-) -> List[PercentageMetrics]:
+) -> Tuple[List[PercentageMetrics], Dict[int, SwinModel]]:
     """Run learning curve analysis for all training percentages."""
     all_metrics: List[PercentageMetrics] = []
+    best_models_by_percentage: Dict[int, SwinModel] = {}
 
     for percentage in config.train_percentages:
         print(f"\n{'=' * 60}")
         print(f"Training with {percentage}% of data")
         print(f"{'=' * 60}")
 
-        pct_metrics = _run_percentage_experiment(train_dataset, percentage, config)
+        pct_metrics, best_model = _run_percentage_experiment(
+            train_dataset,
+            percentage,
+            config,
+        )
         all_metrics.append(pct_metrics)
+        best_models_by_percentage[percentage] = best_model
 
         print(f"\n  {percentage}% Summary:")
         print(
@@ -165,14 +219,14 @@ def _run_validation_loop(
             f"± {pct_metrics.std_accuracy:.4f}",
         )
 
-    return all_metrics
+    return all_metrics, best_models_by_percentage
 
 
 def _run_percentage_experiment(
     dataset: SegmentationDatasetInterface,
     percentage: int,
     config: SwinTrainingConfig,
-) -> PercentageMetrics:
+) -> Tuple[PercentageMetrics, SwinModel]:
     """Run k-fold cross-validation for a single training percentage."""
     # Subsample dataset
     subsampled = subsample_dataset(dataset, percentage, config.seed)
@@ -183,17 +237,28 @@ def _run_percentage_experiment(
 
     pct_metrics = PercentageMetrics(percentage=percentage)
 
+    # Track best fold model by dice score
+    best_model: SwinModel | None = None
+    best_dice: float = -1.0
+
     for fold, (train_split, val_split) in enumerate(splits):
         print(f"\n  Fold {fold + 1}/{config.n_folds}")
-        fold_metrics = _train_fold(train_split, val_split, fold, config)
+        fold_metrics, model = _train_fold(train_split, val_split, fold, config)
         pct_metrics.fold_metrics.append(fold_metrics)
+
+        # Track best model
+        if fold_metrics.dice_macro > best_dice:
+            best_dice = fold_metrics.dice_macro
+            best_model = model
 
         print(
             f"    F1 (Dice): {fold_metrics.dice_macro:.4f}, "
             f"Accuracy: {fold_metrics.accuracy:.4f}",
         )
 
-    return pct_metrics
+    # best_model is guaranteed to be set since we have at least one fold
+    assert best_model is not None
+    return pct_metrics, best_model
 
 
 def _train_fold(
@@ -201,14 +266,14 @@ def _train_fold(
     val_dataset: SegmentationDatasetInterface,
     fold: int,
     config: SwinTrainingConfig,
-) -> FoldMetrics:
+) -> Tuple[FoldMetrics, SwinModel]:
     """
     Train and evaluate a single fold.
 
     1. Apply augmentation to training data (not validation)
     2. Create and train SwinModel
     3. Evaluate on validation set
-    4. Return metrics
+    4. Return metrics and trained model
 
     """
     # Apply augmentation to training data only
@@ -227,12 +292,14 @@ def _train_fold(
     evaluator = create_evaluator()
     metrics, _ = evaluate_model(model, val_dataset, evaluator)
 
-    return FoldMetrics(
+    fold_metrics = FoldMetrics(
         fold=fold,
         train_history=train_result.history,
         dice_macro=metrics.get("Dice_Macro", 0.0),
         accuracy=metrics.get("Accuracy", 0.0),
     )
+
+    return fold_metrics, model
 
 
 # ==============================================================================
@@ -310,6 +377,63 @@ def _save_model(model: SwinModel, path: Path) -> None:
     """Save model state dict to disk."""
     torch.save(model.model.state_dict(), path)
     print(f"Saved model to {path}")
+
+
+def _collect_progression_predictions(
+    best_models: Dict[int, SwinModel],
+    test_dataset: SegmentationDatasetInterface,
+    sample_indices: List[int],
+) -> Dict[int, List[np.ndarray]]:
+    """
+    Collect predictions from best models at each percentage for selected samples.
+
+    Args:
+        best_models: Dictionary mapping percentage to best fold's model.
+        test_dataset: Test dataset to predict on.
+        sample_indices: Indices of samples to predict.
+
+    Returns:
+        Dictionary mapping percentage to list of predicted masks.
+
+    """
+    predictions_by_percentage: Dict[int, List[np.ndarray]] = {}
+
+    for percentage, model in sorted(best_models.items()):
+        print(f"  Collecting predictions for {percentage}%...")
+        predictions = _predict_samples(model, test_dataset, sample_indices)
+        predictions_by_percentage[percentage] = predictions
+
+    return predictions_by_percentage
+
+
+def _predict_samples(
+    model: SwinModel,
+    dataset: SegmentationDatasetInterface,
+    indices: List[int],
+) -> List[np.ndarray]:
+    """
+    Predict masks for specific sample indices.
+
+    Args:
+        model: Trained SwinModel.
+        dataset: Dataset containing samples.
+        indices: Indices of samples to predict.
+
+    Returns:
+        List of predicted masks as numpy arrays.
+
+    """
+    # Create subset dataset with only the selected samples
+    subset_samples = [dataset.samples[idx] for idx in indices]
+    subset_dataset = SegmentationDatasetInterface(samples=subset_samples)
+
+    # Predict only on the subset
+    mask_pairs = model.evaluate(subset_dataset)
+
+    # Extract predicted masks (first element of each pair)
+    predictions = [pair[0] for pair in mask_pairs]
+
+    return predictions
 
 
 # ==============================================================================

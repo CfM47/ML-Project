@@ -1,7 +1,7 @@
 """Visualization utilities for training and validation results."""
 
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +10,65 @@ from matplotlib.figure import Figure
 
 from auto_ml.interfaces import MaskPair, SegmentationDatasetInterface
 from model.swin.metrics import PercentageMetrics
+
+# Default colors for 3-class segmentation (RGB, 0-1 range)
+DEFAULT_MASK_COLORS: List[Tuple[float, float, float]] = [
+    (1.0, 0.2, 0.2),  # Class 0: Red
+    (0.2, 0.6, 1.0),  # Class 1: Blue
+    (0.0, 0.0, 0.0),  # Class 2: Black (background)
+]
+
+DEFAULT_MASK_ALPHA = 0.6  # Overlay opacity
+
+
+def _plot_mask(
+    ax: Axes,
+    mask: np.ndarray,
+    underlay: np.ndarray,
+    colors: List[Tuple[float, float, float]] | None = None,
+    alpha: float = DEFAULT_MASK_ALPHA,
+) -> None:
+    """
+    Plot a segmentation mask overlaid on an underlay image.
+
+    Args:
+        ax: Matplotlib axes to plot on.
+        mask: Segmentation mask with integer class labels (0, 1, 2).
+        underlay: Grayscale image to use as background.
+        colors: List of RGB tuples (0-1 range) for each class.
+            Defaults to DEFAULT_MASK_COLORS.
+        alpha: Opacity of the mask overlay (0-1). Defaults to DEFAULT_MASK_ALPHA.
+
+    """
+    if colors is None:
+        colors = DEFAULT_MASK_COLORS
+
+    # Normalize underlay to 0-1 range
+    if underlay.max() > 1:
+        underlay_norm = underlay.astype(np.float32) / 255.0
+    else:
+        underlay_norm = underlay.astype(np.float32)
+
+    # Convert grayscale to RGB if needed
+    if underlay_norm.ndim == 2:
+        underlay_rgb = np.stack([underlay_norm] * 3, axis=-1)
+    else:
+        underlay_rgb = underlay_norm
+
+    # Create colored mask overlay
+    h, w = mask.shape
+    mask_rgb = np.zeros((h, w, 3), dtype=np.float32)
+    for class_idx, color in enumerate(colors):
+        class_mask = mask == class_idx
+        for c in range(3):
+            mask_rgb[:, :, c] += class_mask * color[c]
+
+    # Blend underlay and mask
+    blended = (1 - alpha) * underlay_rgb + alpha * mask_rgb
+    blended = np.clip(blended, 0, 1)
+
+    ax.imshow(blended)
+    ax.axis("off")
 
 
 def plot_results(
@@ -97,9 +156,6 @@ def visualize_predictions(
     if num_samples == 1:
         axes = axes.reshape(1, -1)
 
-    # Color map for masks (3 classes)
-    cmap = plt.cm.get_cmap("viridis", 3)
-
     for i in range(num_samples):
         image = test_dataset.images[i]
         predicted_mask, real_mask = mask_pairs[i]
@@ -109,21 +165,89 @@ def visualize_predictions(
         axes[i, 0].set_title("Input" if i == 0 else "")
         axes[i, 0].axis("off")
 
-        # Ground truth mask
-        axes[i, 1].imshow(real_mask, cmap=cmap, vmin=0, vmax=2)
+        # Ground truth mask (with underlay)
+        _plot_mask(axes[i, 1], real_mask, image)
         axes[i, 1].set_title("Ground Truth" if i == 0 else "")
-        axes[i, 1].axis("off")
 
-        # Predicted mask
-        axes[i, 2].imshow(predicted_mask, cmap=cmap, vmin=0, vmax=2)
+        # Predicted mask (with underlay)
+        _plot_mask(axes[i, 2], predicted_mask, image)
         axes[i, 2].set_title("Predicted" if i == 0 else "")
-        axes[i, 2].axis("off")
 
     plt.tight_layout()
 
     if output_path:
         fig.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f"Saved predictions visualization to {output_path}")
+
+    return fig
+
+
+def plot_progression_grid(
+    test_dataset: SegmentationDatasetInterface,
+    predictions_by_percentage: Dict[int, List[np.ndarray]],
+    sample_indices: List[int],
+    output_path: Path | None = None,
+) -> Figure:
+    """
+    Create progression grid showing predictions across training percentages.
+
+    Layout:
+    - Columns: [10%, 20%, ..., 80%, Ground Truth, Original]
+    - Rows: One per sample
+
+    Args:
+        test_dataset: Test dataset with original images and masks.
+        predictions_by_percentage: Dict mapping percentage to list of predicted masks.
+        sample_indices: Indices of samples in test_dataset that were predicted.
+        output_path: Optional path to save the figure.
+
+    Returns:
+        Matplotlib Figure.
+
+    """
+    percentages = sorted(predictions_by_percentage.keys())
+    num_samples = len(sample_indices)
+    num_cols = len(percentages) + 2  # +2 for ground truth and original
+
+    fig, axes = plt.subplots(
+        num_samples,
+        num_cols,
+        figsize=(2 * num_cols, 2 * num_samples),
+    )
+
+    # Handle single sample case
+    if num_samples == 1:
+        axes = axes.reshape(1, -1)
+
+    for row, idx in enumerate(sample_indices):
+        image = test_dataset.images[idx]
+        ground_truth = test_dataset.masks[idx]
+
+        # Predictions for each percentage (with underlay)
+        for col, pct in enumerate(percentages):
+            pred = predictions_by_percentage[pct][row]
+            _plot_mask(axes[row, col], pred, image)
+            if row == 0:
+                axes[row, col].set_title(f"{pct}%", fontsize=10)
+
+        # Ground truth column (with underlay)
+        gt_col = len(percentages)
+        _plot_mask(axes[row, gt_col], ground_truth, image)
+        if row == 0:
+            axes[row, gt_col].set_title("Ground Truth", fontsize=10)
+
+        # Original image column
+        orig_col = len(percentages) + 1
+        axes[row, orig_col].imshow(image, cmap="gray")
+        if row == 0:
+            axes[row, orig_col].set_title("Original", fontsize=10)
+        axes[row, orig_col].axis("off")
+
+    plt.tight_layout()
+
+    if output_path:
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+        print(f"Saved progression grid to {output_path}")
 
     return fig
 

@@ -33,6 +33,7 @@ class SwinTrainingConfig:
 
     # Visualization
     num_test_visualizations: int = 10
+    num_progression_samples: int = 10  # Test images to track across percentages
 
     # Output directory
     output_dir: Path = field(default_factory=lambda: Path("results/swin"))
