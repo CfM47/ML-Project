@@ -4,75 +4,222 @@ Machine Learning Project for senior year Computer Science ML course.
 
 ![Pull Request Checks](https://github.com/CfM47/ML-Project/actions/workflows/pr-checks.yml/badge.svg)
 
-## Data
+## Overview
 
-### SEM Imgaes
+This project implements an AutoML pipeline for **SEM (Scanning Electron Microscopy) image segmentation**. It provides two main workflows:
 
-Put the SEM Images dataset in the `data/sem_images/raw/` directory.
+1. **AutoML Exploration** - Automatically explore combinations of augmentations and models to find optimal configurations
+2. **Swin Model Training** - Dedicated training pipeline for Swin Transformer segmentation with learning curve analysis
 
-It should contain:
+## Installation
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+
+```bash
+# Clone the repository
+git clone https://github.com/CfM47/ML-Project.git
+cd ML-Project
+
+# Install dependencies
+uv sync
+
+# Install dev dependencies (for testing/linting)
+uv sync --group dev
+```
+
+## Data Setup
+
+### SEM Images
+
+Place the SEM Images dataset in the `data/sem_images/raw/` directory:
 
 ```
 data/sem_images/raw/Brittle/{images.png...}
 data/sem_images/raw/Ductile/{images.png...}
 ```
 
+For training/test splits:
+```
+data/train/unlabeled/{images.png...}
+data/train/labeled/{masks.png...}
+data/test/unlabeled/{images.png...}
+data/test/labeled/{masks.png...}
+```
+
 ## Usage
 
-This project can be run in two modes: interactive or via command-line arguments.
+### Workflow 1: AutoML Exploration
 
-### Interactive Mode
+The AutoML system explores combinations of augmentation strategies and segmentation models using k-fold cross-validation.
 
-The interactive mode provides a simple Text-based User Interface (TUI) to guide you through selecting and running an experiment. This is the recommended way for local development and exploration.
+```python
+from main import _run_with_setup
 
-To start the interactive mode, run:
-```bash
-python main_interactive.py
-```
-You will be prompted to choose an approach, an action (train or validate), and a configuration file.
-
-### Command-Line Mode
-
-The command-line interface is ideal for automation, scripting, or running in non-interactive environments (e.g., on a server, in a Docker container, or on Google Colab/Kaggle).
-
-The script `main.py` accepts three required arguments:
-
-- `-a`, `--approach`: The name of the approach to run.
-- `-x`, `--action`: The action to perform (`train` or `validate`).
-- `-c`, `--config`: The name of the configuration file (without the `.yaml` extension).
-
-**Example:**
-```bash
-python main.py --approach cnn_v1_approach --action train --config base
-```
-You can see all available options with the help flag:
-```bash
-python main.py --help
+_run_with_setup(
+    unlabeled_dir="data/train/unlabeled",
+    labeled_dir="data/train/labeled",
+    classification_dataset_dir="data/classification",
+    auto_ml_cache_dir="cache/automl",
+    augmentator_indices=[0, 1],  # Optional: filter augmentators
+    model_indices=[0, 1],        # Optional: filter models
+)
 ```
 
----
+**Available Models** (via `setup/models/setup.py`):
+- ViT Segmentation Model
+- Swin Segmentation Model
+- QuadTree + CNN/ViT classifiers
+- SlidingWindow + CNN/ViT classifiers
 
-## Creating New Approaches
+**Available Augmentations** (via `setup/augmentators/setup.py`):
+- Identity (no augmentation)
+- Combined 2Geo + 2Photo + 1SEM
+- Combined 3Geo + 1Photo + 1SEM
 
-The project is designed to be extensible. You can add new experimental approaches, and the TUI and CLI will automatically discover them if you follow these conventions.
+### Workflow 2: Swin Model Training
 
-To create a new approach named `<my_new_approach>`:
+Dedicated training pipeline with learning curve analysis and early stopping support.
 
-1.  **Create a Directory**:
-    Create a new directory inside `src/approaches/`:
-    ```
-    src/approaches/<my_new_approach>/
-    ```
+#### Learning Curve Validation
 
-2.  **Add Action Scripts**:
-    Inside your new directory, add at least one of the following files:
-    - `train.py`: This script **must** contain a function `train(config_name: str)`.
-    - `validate.py`: This script **must** contain a function `validate(config_name: str)`.
+Run k-fold cross-validation at varying training percentages:
 
-3.  **Add Configuration Files**:
-    Create a `configs` subdirectory and add at least one YAML configuration file to it:
-    ```
-    src/approaches/<my_new_approach>/configs/base.yaml
-    ```
+```python
+from model.swin.train import run_percentage_validation
+from model.swin.config import SwinTrainingConfig
 
-If these steps are followed, `<my_new_approach>` will automatically appear as an option in the interactive menu and be available to the CLI.
+config = SwinTrainingConfig(
+    train_percentages=[10, 20, 30, 40, 50, 60, 70, 80],
+    n_folds=5,
+    epochs=40,
+    patience=5,  # Early stopping (None to disable)
+)
+
+metrics, fig = run_percentage_validation(
+    train_unlabeled_dir="data/train/unlabeled",
+    train_labeled_dir="data/train/labeled",
+    config=config,
+)
+```
+
+#### Final Model Training
+
+Train on full dataset with 80/20 validation split:
+
+```python
+from model.swin.train import run_final_training
+from model.swin.config import SwinTrainingConfig
+
+config = SwinTrainingConfig(
+    epochs=40,
+    patience=5,
+    output_dir="results/swin",
+)
+
+model, test_metrics, mask_pairs, fig = run_final_training(
+    train_unlabeled_dir="data/train/unlabeled",
+    train_labeled_dir="data/train/labeled",
+    test_unlabeled_dir="data/test/unlabeled",
+    test_labeled_dir="data/test/labeled",
+    config=config,
+)
+```
+
+#### CLI Usage
+
+```bash
+# Learning curve validation
+python -m model.swin.train validate \
+    --train-unlabeled data/train/unlabeled \
+    --train-labeled data/train/labeled \
+    --output-dir results/swin
+
+# Final training with test evaluation
+python -m model.swin.train train \
+    --train-unlabeled data/train/unlabeled \
+    --train-labeled data/train/labeled \
+    --test-unlabeled data/test/unlabeled \
+    --test-labeled data/test/labeled \
+    --output-dir results/swin
+```
+
+### Kaggle Notebooks
+
+Pre-configured notebooks for running on Kaggle are available in `kaggle/`:
+
+- `run-automl.ipynb` - AutoML exploration
+- `run-training.ipynb` - Swin final model training
+- `run-validation.ipynb` - Swin learning curve validation
+
+## Configuration
+
+### SwinTrainingConfig
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `train_percentages` | `List[int]` | `[10, 20, ..., 80]` | Percentages for learning curve |
+| `n_folds` | `int` | `5` | Number of cross-validation folds |
+| `epochs` | `int` | `40` | Training epochs |
+| `batch_size` | `int` | `2` | Batch size |
+| `learning_rate` | `float` | `1e-4` | Learning rate |
+| `embed_dim` | `int` | `128` | Swin embedding dimension |
+| `depths` | `List[int]` | `[2, 2, 18, 2]` | Swin layer depths |
+| `num_heads` | `List[int]` | `[8, 16, 32, 64]` | Swin attention heads |
+| `patience` | `int \| None` | `None` | Early stopping patience (None = disabled) |
+| `augmentation_copies` | `int` | `2` | Augmentation copies per sample |
+| `num_test_visualizations` | `int` | `10` | Samples to visualize |
+| `output_dir` | `Path` | `results/swin` | Output directory |
+| `seed` | `int` | `42` | Random seed |
+| `device` | `str` | `"auto"` | Device: "auto", "cuda", "mps", "cpu" |
+
+## Project Structure
+
+```
+ML-Project/
+├── auto_ml/                    # Core AutoML framework
+│   ├── implementations/        # Concrete implementations
+│   │   ├── augmentators/       # Data augmentation strategies
+│   │   ├── classifiers/        # CNN, ViT classifiers
+│   │   ├── evaluators/         # Metrics (Dice, IoU, Accuracy, etc.)
+│   │   ├── segmentators/       # Swin, ViT, QuadTree, SlidingWindow
+│   │   ├── datasets.py         # Dataset loading utilities
+│   │   └── nodes.py            # AutoML pipeline nodes
+│   ├── interfaces.py           # Abstract interfaces
+│   └── automl.py               # AutoML orchestration
+├── model/                      # Swin training pipeline
+│   └── swin/
+│       ├── config.py           # SwinTrainingConfig
+│       ├── train.py            # Training entry points
+│       ├── data.py             # Data utilities
+│       ├── evaluation.py       # Evaluation helpers
+│       ├── metrics.py          # Metrics dataclasses
+│       └── visualization.py    # Plotting utilities
+├── setup/                      # Pre-configured setups for AutoML
+│   ├── augmentators/           # Augmentation node configurations
+│   ├── evaluator/              # Evaluator configurations
+│   └── models/                 # Model node configurations
+├── kaggle/                     # Kaggle notebook templates
+├── tests/                      # Unit tests
+├── main.py                     # AutoML entry point
+└── pyproject.toml              # Project configuration
+```
+
+## Development
+
+```bash
+# Run tests
+make test
+
+# Type checking
+make typecheck
+
+# Linting
+make lint
+
+# Format code
+make format
+```
+
+## License
+
+This project is for educational purposes as part of a senior year ML course.
