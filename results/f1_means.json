@@ -1,0 +1,27 @@
+{
+  "Aug_Identity_K5": {
+    "ViT_Model_Node": 0.5977702590091415,
+    "Swin_Model_Node": 0.7033482574757579,
+    "ViT_Big_Model_Node": 0.54088708387608,
+    "Swin_Big_Model_Node": 0.5558194350390065,
+    "Quadtree-CNNModel_Model_Node": 0.4896454933310129,
+    "Quadtree-ViTModel_Model_Node": 0.2500604103597349,
+    "SlidingWindow-CNN_W64_S32": 0.4739060268320078,
+    "SlidingWindow-CNN_W128_S64": 0.4762290421966582,
+    "SlidingWindow-CNN_W128_S128": 0.48812028274215996,
+    "SlidingWindow-CNN_W256_S128": 0.4588851539238294,
+    "SlidingWindow-ViT_W64_S32": 0.2500604103597349
+  },
+  "Combined_2Geo_2Photo_1SEM_x2": {
+    "ViT_Model_Node": 0.5645844631911766,
+    "Swin_Model_Node": 0.7500971147269837,
+    "ViT_Big_Model_Node": 0.3986882890655715,
+    "Swin_Big_Model_Node": 0.726913598225204
+  },
+  "Combined_3Geo_1Photo_1SEM_x2": {
+    "ViT_Model_Node": 0.57422052614887,
+    "Swin_Model_Node": 0.7495168637183569,
+    "ViT_Big_Model_Node": 0.41646387969438753,
+    "Swin_Big_Model_Node": 0.45934747134610276
+  }
+}
