@@ -293,6 +293,7 @@ def _create_swin_model(config: SwinTrainingConfig) -> SwinModel:
         embed_dim=config.embed_dim,
         depths=config.depths,
         num_heads=config.num_heads,
+        patience=config.patience,
         device=config.device,
     )
 

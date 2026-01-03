@@ -25,6 +25,9 @@ class SwinTrainingConfig:
     depths: List[int] = field(default_factory=lambda: [2, 2, 18, 2])
     num_heads: List[int] = field(default_factory=lambda: [8, 16, 32, 64])
 
+    # Early stopping (None = disabled)
+    patience: int | None = None
+
     # Augmentation copies (for 2Geo2Photo1SEM)
     augmentation_copies: int = 2
 
