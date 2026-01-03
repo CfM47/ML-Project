@@ -3,7 +3,14 @@
     "ViT_Model_Node": 1057.8780171871185,
     "Swin_Model_Node": 927.6742687225342,
     "ViT_Big_Model_Node": 2407.901523590088,
-    "Swin_Big_Model_Node": 2715.197743177414
+    "Swin_Big_Model_Node": 2715.197743177414,
+    "Quadtree-CNNModel_Model_Node": 6421.709107637405,
+    "Quadtree-ViTModel_Model_Node": 34886.862389564514,
+    "SlidingWindow-CNN_W64_S32": 7742.393431901932,
+    "SlidingWindow-CNN_W128_S64": 7605.475355625153,
+    "SlidingWindow-CNN_W128_S128": 7568.232273817062,
+    "SlidingWindow-CNN_W256_S128": 7573.130106210709,
+    "SlidingWindow-ViT_W64_S32": 9141.40427350998
   },
   "Combined_2Geo_2Photo_1SEM_x2": {
     "ViT_Model_Node": 2997.826024055481,
