@@ -1,0 +1,20 @@
+{
+  "Aug_Identity_K5": {
+    "ViT_Model_Node": 1057.8780171871185,
+    "Swin_Model_Node": 927.6742687225342,
+    "ViT_Big_Model_Node": 2407.901523590088,
+    "Swin_Big_Model_Node": 2715.197743177414
+  },
+  "Combined_2Geo_2Photo_1SEM_x2": {
+    "ViT_Model_Node": 2997.826024055481,
+    "Swin_Model_Node": 2564.043711423874,
+    "ViT_Big_Model_Node": 6924.898647785187,
+    "Swin_Big_Model_Node": 7674.968294382095
+  },
+  "Combined_3Geo_1Photo_1SEM_x2": {
+    "ViT_Model_Node": 3014.491398334503,
+    "Swin_Model_Node": 2575.245814561844,
+    "ViT_Big_Model_Node": 6930.94030547142,
+    "Swin_Big_Model_Node": 7697.53147149086
+  }
+}
