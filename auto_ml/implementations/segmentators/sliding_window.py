@@ -47,8 +47,8 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
             window_size: Size of the sliding window (e.g., 32, 64, 128, 256).
             stride: Step size for moving the window across the image.
             aggregation_method: Method for aggregating votes from overlapping
-                                windows. Currently only "majority_vote" is
-                                supported.
+                                windows. Supported methods: "majority_vote" and
+                                "confidence_weighted".
 
         """
         self.classifier = classifier
@@ -238,7 +238,17 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
         self,
         predicted_real_pairs: List[MaskPair],
     ) -> MetricsResultInterface:
-        """Compute segmentation metrics and return a MetricsResultInterface."""
+        """
+        Compute segmentation metrics and return a MetricsResultInterface.
+
+        Args:
+            predicted_real_pairs: List of (predicted_mask, real_mask) tuples.
+
+        Returns:
+            MetricsResultInterface containing accuracy, loss, IoU, precision,
+            recall, F1 score, and per-class metrics.
+
+        """
         num_classes = 3  # brittle, ductile, mixed
 
         total_pixels = 0
