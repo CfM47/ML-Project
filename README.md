@@ -162,9 +162,9 @@ Pre-configured notebooks for running on Kaggle are available in `kaggle/`:
 | `epochs` | `int` | `40` | Training epochs |
 | `batch_size` | `int` | `2` | Batch size |
 | `learning_rate` | `float` | `1e-4` | Learning rate |
-| `embed_dim` | `int` | `128` | Swin embedding dimension |
-| `depths` | `List[int]` | `[2, 2, 18, 2]` | Swin layer depths |
-| `num_heads` | `List[int]` | `[8, 16, 32, 64]` | Swin attention heads |
+| `embed_dim` | `int` | `96` | Swin embedding dimension |
+| `depths` | `List[int]` | `[2, 2, 6, 2]` | Swin layer depths |
+| `num_heads` | `List[int]` | `[3, 6, 12, 24]` | Swin attention heads |
 | `patience` | `int \| None` | `None` | Early stopping patience (None = disabled) |
 | `augmentation_copies` | `int` | `2` | Augmentation copies per sample |
 | `num_test_visualizations` | `int` | `10` | Samples to visualize |

@@ -17,13 +17,13 @@ class SwinTrainingConfig:
     # K-fold settings (matches DataAugmentatorNode default)
     n_folds: int = 5
 
-    # Swin model settings (from setup/models/setup.py)
+    # Swin model settings
     epochs: int = 40
     batch_size: int = 2
     learning_rate: float = 1e-4
-    embed_dim: int = 128
-    depths: List[int] = field(default_factory=lambda: [2, 2, 18, 2])
-    num_heads: List[int] = field(default_factory=lambda: [8, 16, 32, 64])
+    embed_dim: int = 96
+    depths: List[int] = field(default_factory=lambda: [2, 2, 6, 2])
+    num_heads: List[int] = field(default_factory=lambda: [3, 6, 12, 24])
 
     # Early stopping (None = disabled)
     patience: int | None = None
