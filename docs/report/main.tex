@@ -1,0 +1,349 @@
+\documentclass[journal]{IEEEtran}
+
+\ifCLASSINFOpdf
+\usepackage[pdftex]{graphicx}
+  % declare the path(s) where your graphic files are
+\graphicspath{{../pdf/}{../jpeg/}}
+  % and their extensions so you won't have to specify these with
+  % every instance of \includegraphics
+\DeclareGraphicsExtensions{.pdf,.jpeg,.png}
+\else
+  % or other class option (dvipsone, dvipdf, if not using dvips). graphicx
+  % will default to the driver specified in the system graphics.cfg if no
+  % driver is specified.
+  % \usepackage[dvips]{graphicx}
+  % declare the path(s) where your graphic files are
+  % \graphicspath{{../eps/}}
+  % and their extensions so you won't have to specify these with
+  % every instance of \includegraphics
+  % \DeclareGraphicsExtensions{.eps}
+\fi
+
+\usepackage[spanish]{babel}  % activa idioma español
+\usepackage{titlesec}
+\setcounter{secnumdepth}{5}
+
+
+
+% *** MATH PACKAGES ***
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\interdisplaylinepenalty=2500
+% *** SPECIALIZED LIST PACKAGES ***
+\usepackage{algorithmic}
+% *** ALIGNMENT PACKAGES ***
+\usepackage{array}
+% *** SUBFIGURE PACKAGES ***
+\ifCLASSOPTIONcompsoc
+  \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\else
+  \usepackage[caption=false,font=footnotesize]{subfig}
+\fi
+% *** FLOAT PACKAGES ***
+%\usepackage{fixltx2e}
+%\usepackage{stfloats}
+%\usepackage{dblfloatfix}
+
+%\ifCLASSOPTIONcaptionsoff
+%  \usepackage[nomarkers]{endfloat}
+% \let\MYoriglatexcaption\caption
+% \renewcommand{\caption}[2][\relax]{\MYoriglatexcaption[#2]{#2}}
+%\fi
+%\let\MYorigsubfloat\subfloat
+%\renewcommand{\subfloat}[2][\relax]{\MYorigsubfloat[]{#2}}
+
+% *** PDF, URL AND HYPERLINK PACKAGES ***
+\usepackage{url}
+
+\usepackage{booktabs}
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+\hyphenation{maxi-mizar REINFORCE}
+
+\newtheorem{definition}{Definición}
+\newtheorem{theorem}{Teorema}
+\newtheorem{lemma}{Lema}
+\newtheorem{proposition}{Proposición}
+
+% Corolarios
+\newtheorem{corollary}{Corolario}
+
+% Subparagraph command
+% \newcommand{\subparagraph}[1]{\vspace{1em}\noindent\textbf{#1.}}
+
+\begin{document}
+%
+% paper title
+% Titles are generally capitalized except for words such as a, an, and, as,
+% at, but, by, for, in, nor, of, on, or, the, to and up, which are usually
+% not capitalized unless they are the first or last word of the title.
+% Linebreaks \\ can be used within to get better formatting as desired.
+% Do not put math or special symbols in the title.
+\title{Segmentación de Imágenes SEM mediante AutoML: \\
+       Comparación de Estrategias de Segmentación}
+%
+%
+% author names and IEEE memberships
+% note positions of commas and nonbreaking spaces ( ~ ) LaTeX will not break
+% a structure at a ~ so this keeps an author's name from being broken across
+% two lines.
+% use \thanks{} to gain access to the first footnote area
+% a separate \thanks must be used for each paragraph as LaTeX2e's \thanks
+% was not built to handle multiple paragraphs
+%
+
+\author{Autor}
+
+
+% make the title area
+\maketitle
+% As a general rule, do not put math, special symbols or citations
+% in the abstract or keywords.
+% \begin{abstract}
+% The abstract goes here.
+% \end{abstract}
+
+% Note that keywords are not normally used for peerreview papers.
+% \begin{IEEEkeywords}
+% IEEE, IEEEtran, journal, \LaTeX, paper, template.
+% end{IEEEkeywords}
+
+\begin{abstract}
+Se presenta un enfoque de aprendizaje automático para la detección de zonas frágiles y dúctiles en imágenes obtenidas mediante microscopía electrónica de barrido. El estudio compara modelos del estado del arte basados en transformers con estrategias de segmentación propuestas, integradas en un framework AutoML. La selección del modelo se realiza a partir de métricas de desempeño relevantes, considerando explícitamente las limitaciones computacionales del entorno de ejecución. Los resultados muestran la viabilidad del enfoque bajo recursos restringidos y evidencian el impacto del uso de aumentación de datos y transferencia de aprendizaje en la calidad de la segmentación.
+\end{abstract}
+
+\section{Introducción}
+La caracterización de los mecanismos de fractura en materiales es un problema central en la ciencia e ingeniería de materiales, debido a su impacto directo en la evaluación del desempeño mecánico y la confiabilidad estructural. En particular, la identificación de zonas asociadas a comportamientos frágiles y dúctiles a partir de microestructuras proporciona información clave para el análisis del fallo y el diseño de materiales.
+
+Las imágenes obtenidas mediante microscopía electrónica de barrido (SEM) constituyen una de las principales herramientas para el estudio de superficies de fractura y microestructuras. No obstante, el análisis tradicional de este tipo de imágenes se basa en inspección visual experta, lo cual introduce subjetividad, limita la reproducibilidad de los resultados y dificulta su aplicación a grandes volúmenes de datos.
+
+En este contexto, las técnicas de aprendizaje automático y, en particular, los modelos de visión por computador han mostrado un potencial significativo para automatizar tareas de clasificación y segmentación en imágenes complejas. Recientemente, modelos basados en transformers, como Vision Transformer (ViT) y Swin Transformer, han alcanzado resultados destacados en diversas tareas de análisis de imágenes, posicionándose como referentes del estado del arte. Sin embargo, su aplicación práctica suele estar condicionada por la disponibilidad de datos anotados y recursos computacionales elevados.
+
+Estas limitaciones motivan la exploración de estrategias alternativas que permitan aprovechar modelos de alto desempeño bajo restricciones de cómputo y datos. En este trabajo se consideran tanto modelos del estado del arte como enfoques propuestos basados en la descomposición espacial de la imagen y el uso de clasificadores preentrenados, con el objetivo de transferir conocimiento desde tareas de clasificación hacia problemas de segmentación.
+
+Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de modelos y el ajuste de hiperparámetros, empleando metaheurísticas y considerando explícitamente las restricciones impuestas por un entorno de cómputo limitado. El objetivo de este estudio es evaluar la viabilidad y el desempeño de estas estrategias para la detección de zonas frágiles y dúctiles en imágenes SEM, comparando modelos del estado del arte con enfoques alternativos bajo condiciones realistas de entrenamiento y evaluación.
+
+\section{Metodología}
+
+\section{Descripción del Dataset}
+% - Origen de las imágenes SEM
+% - Dimensiones (512x512)
+% - Clases de segmentación (frágil, dúctil, mixto)
+% - Distribución de clases
+% - División train/test
+
+\section{Estrategias de Segmentación}
+
+\subsection{Vision Transformer (ViT)}
+% - Arquitectura general
+% - División en patches
+% - Mecanismo de atención
+% - Adaptación para segmentación semántica
+% - Hiperparámetros utilizados
+
+\subsection{Swin Transformer}
+% - Arquitectura jerárquica
+% - Ventanas deslizantes (shifted windows)
+% - Ventajas sobre ViT estándar
+% - Hiperparámetros utilizados
+
+\subsection{Segmentación por Quadtree}
+% - Concepto de descomposición espacial recursiva
+% - Algoritmo de subdivisión
+% - Criterios de parada (umbral de confianza, tamaño mínimo, profundidad)
+% - Optimización de hiperparámetros con Simulated Annealing
+
+\subsubsection{Clasificador CNN}
+
+El clasificador basado en Redes Neuronales Convolucionales (CNN) fue diseñado 
+para clasificar regiones de tamaño variable extraídas por el algoritmo Quadtree.
+
+% \subparagraph{Arquitectura General}
+
+La arquitectura sigue un patrón de extracción de características seguido de 
+clasificación:
+
+\begin{equation}
+    \begin{aligned}
+        \text{Entrada} &\rightarrow \text{Bloques Conv.} \rightarrow 
+        \text{Pooling Global} \\
+        &\rightarrow \text{Clasificador} \rightarrow \text{Softmax}
+    \end{aligned}
+\end{equation}
+
+% \subparagraph{Bloques Convolucionales}
+
+Cada bloque convolucional aplica la siguiente secuencia:
+
+\begin{enumerate}
+    \item Convolución 3×3 con padding=1
+    \item Batch Normalization
+    \item Activación ReLU
+    \item Convolución 3×3 con padding=1
+    \item Batch Normalization
+    \item Activación ReLU
+    \item Max Pooling 2×2 con stride=2
+\end{enumerate}
+
+Se usa un kernel de 3×3 porque es el tamaño mínimo que captura información 
+espacial (arriba, abajo, izquierda, derecha y diagonales). Al apilar múltiples 
+capas con kernels pequeños se obtiene un campo receptivo grande con menos 
+parámetros que usando un kernel grande directamente.
+
+El padding de 1 píxel mantiene las dimensiones espaciales constantes después 
+de cada convolución, lo que simplifica el diseño de la red.
+
+Batch Normalization se incluye para acelerar el entrenamiento y estabilizar 
+los gradientes, permitiendo usar tasas de aprendizaje más altas.
+
+Se usan dos convoluciones por bloque antes del pooling para aumentar la 
+capacidad de la red sin reducir las dimensiones espaciales prematuramente.
+
+% \subparagraph{Número Configurable de Bloques}
+
+El parámetro \texttt{num\_blocks} controla la profundidad de la red. Como cada 
+bloque reduce las dimensiones a la mitad mediante Max Pooling, el tamaño mínimo 
+de entrada es $2^{n} \times 2^{n}$ píxeles, donde $n$ es el número de bloques.
+
+\begin{table}[h]
+\centering
+\caption{Relación entre número de bloques y tamaño mínimo de entrada}
+\begin{tabular}{ccc}
+\toprule
+\texttt{num\_blocks} & Tamaño mínimo & Canales finales \\
+\midrule
+2 & 4×4 & 64 \\
+3 & 8×8 & 128 \\
+4 & 16×16 & 256 \\
+5 & 32×32 & 512 \\
+\bottomrule
+\end{tabular}
+\label{tab:cnn_blocks}
+\end{table}
+
+El valor por defecto es 3 bloques, lo que permite clasificar regiones de 8×8 
+píxeles. Este tamaño fue elegido porque el Quadtree puede subdividir hasta 
+regiones pequeñas, y 8×8 se consideró suficiente para contener información visual 
+distinguible mientras permite segmentación detallada.
+
+% \subparagraph{Progresión de Filtros}
+
+El número de filtros se duplica en cada bloque, comenzando desde 32:
+
+\begin{equation}
+    \text{filtros en bloque } i = 32 \times 2^{i-1}
+\end{equation}
+
+Esta progresión compensa la reducción de dimensiones espaciales: a medida que 
+la imagen se hace más pequeña, se aumentan los canales para mantener la 
+capacidad de representación.
+
+% \subparagraph{Adaptive Average Pooling}
+
+Antes de la clasificación se aplica \texttt{AdaptiveAvgPool2d((1,1))}, que 
+reduce cualquier tamaño espacial a 1×1 calculando el promedio de cada canal.
+
+Esta capa permite que la red acepte entradas de cualquier tamaño (siempre que 
+cumplan el mínimo). Sin importar si la entrada es 8×8 o 256×256, la salida 
+siempre es un vector de tamaño fijo que puede procesarse por las capas 
+densas.
+
+% \subparagraph{Cabeza de Clasificación}
+
+La cabeza de clasificación consiste en:
+
+\begin{enumerate}
+    \item Aplanamiento del tensor
+    \item Dropout (50\%)
+    \item Capa densa con reducción a 1/4 de los canales
+    \item Activación ReLU
+    \item Dropout (25\%)
+    \item Capa densa final a 3 clases
+\end{enumerate}
+
+El Dropout previene sobreajuste, que es una preocupación con datasets pequeños 
+de imágenes SEM. La capa intermedia reduce la dimensionalidad gradualmente 
+antes de la clasificación final.
+
+% \subparagraph{Salida}
+
+La red produce probabilidades mediante Softmax, donde la probabilidad más alta 
+indica la clase predicha y su valor representa la confianza. Esta confianza es 
+usada por el Quadtree para decidir si subdividir la región o aceptar la 
+clasificación.
+
+% \subparagraph{Entrenamiento}
+
+El entrenamiento usa Cross-Entropy Loss y el optimizador Adam. Las imágenes se 
+agrupan por tamaño para formar batches, ya que las regiones del Quadtree tienen 
+dimensiones variables y solo se pueden apilar en un tensor imágenes del mismo 
+tamaño.
+
+\subsubsection{Clasificador ViT}
+% - Adaptación de ViT para clasificación de regiones
+% - Redimensionamiento de regiones
+% - Diferencias con ViT de segmentación
+
+\subsection{Pipeline de Aumentación de Datos}
+
+\subsubsection{Aumentaciones Geométricas}
+% - Rotación, volteo, escala, traslación, recorte
+% - Aplicación simultánea a imagen y máscara
+
+\subsubsection{Aumentaciones Fotométricas}
+% - Brillo, contraste, ruido gaussiano, desenfoque, gamma
+% - Aplicación solo a imagen (no a máscara)
+
+\subsubsection{Aumentaciones Específicas para SEM}
+% - Deformación elástica
+% - Ecualización adaptativa de histograma (CLAHE)
+% - Artefactos de carga eléctrica
+% - Ruido de líneas de escaneo
+
+\subsubsection{Composición de Aumentaciones}
+% - Secuencial, selección aleatoria, aplicación probabilística
+% - Estrategias de combinación utilizadas
+
+\subsection{Métricas de Evaluación}
+
+\subsubsection{Exactitud (Accuracy)}
+% - Definición a nivel de píxel
+
+\subsubsection{Intersección sobre Unión (IoU)}
+% - Fórmula
+% - Variantes: por clase, promedio macro, promedio ponderado
+
+\subsubsection{Coeficiente Dice (F1)}
+% - Fórmula
+% - Relación con IoU
+% - Variantes por clase
+
+\subsubsection{Precisión y Recall}
+% - Definiciones
+% - Interpretación en contexto de segmentación
+
+\subsection{Diseño del Framework AutoML}
+% - Arquitectura de nodos (DataAugmentatorNode, ModelNode, EvaluatorNode)
+% - Validación cruzada K-fold
+% - Sistema de caché para experimentos
+% - Flujo de ejecución
+
+\section{Resultados}
+% - Comparación de modelos
+% - Impacto de las estrategias de aumentación
+% - Tablas y gráficos de métricas
+% - Análisis cualitativo de segmentaciones
+
+\section{Conclusiones}
+% - Resumen de hallazgos principales
+% - Mejor estrategia de segmentación
+% - Limitaciones del trabajo
+% - Trabajo futuro
+
+% \bibliographystyle{plain}
+% \bibliography{referencias}
+
+
+\end{document}
