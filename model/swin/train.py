@@ -244,19 +244,27 @@ def _train_final_model(
     train_dataset: SegmentationDatasetInterface,
     config: SwinTrainingConfig,
 ) -> SwinModel:
-    """Train final model on 100% of training data with augmentation."""
+    """Train final model with 80/20 train/val split and augmentation."""
     print("\n" + "=" * 60)
-    print("Training final model on 100% of data")
+    print("Training final model")
     print("=" * 60)
 
-    # Apply augmentation
-    augmentator = create_augmentator(num_copies=config.augmentation_copies)
-    aug_train = augmentator.augment(train_dataset)
-    print(f"Training: {len(train_dataset)} -> {len(aug_train)} samples (augmented)")
+    # Split into train/val (80/20)
+    train_split, val_split = train_dataset.split(
+        ratio=0.8,
+        shuffle=True,
+        random_seed=config.seed,
+    )
+    print(f"Split: {len(train_split)} train, {len(val_split)} validation")
 
-    # Create and train model
+    # Apply augmentation to training data only
+    augmentator = create_augmentator(num_copies=config.augmentation_copies)
+    aug_train = augmentator.augment(train_split)
+    print(f"Training: {len(train_split)} -> {len(aug_train)} samples (augmented)")
+
+    # Create and train model with validation for early stopping
     model = _create_swin_model(config)
-    model.train(aug_train)
+    model.train(aug_train, validation_dataset=val_split)
 
     return model
 
