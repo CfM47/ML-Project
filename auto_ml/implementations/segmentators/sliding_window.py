@@ -33,7 +33,7 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
         classifier_dataset_dir: Optional[Path] = None,
         window_size: int = 64,
         stride: int = 32,
-        aggregation_method: str = "majority_vote",
+        aggregation_method: str = "confidence_weighted",
     ) -> None:
         """
         Initialize the sliding window segmentation model.
@@ -163,7 +163,7 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
 
         # Initialize vote accumulator: (512, 512, 3) for 3 classes
         num_classes = 3
-        vote_map = np.zeros((512, 512, num_classes), dtype=np.int32)
+        vote_map = np.zeros((512, 512, num_classes), dtype=np.float32)
 
         # Slide window across image
         window_count = 0
@@ -185,9 +185,10 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
                 # Add vote for all pixels in this window
                 if self.aggregation_method == "majority_vote":
                     vote_map[y : y + actual_height, x : x + actual_width, label] += 1
-                else:
-                    # Future: support confidence-weighted voting
-                    vote_map[y : y + actual_height, x : x + actual_width, label] += 1
+                elif self.aggregation_method == "confidence_weighted":
+                    vote_map[
+                        y : y + actual_height, x : x + actual_width, label
+                    ] += confidence
 
                 window_count += 1
 
@@ -227,10 +228,10 @@ class SlidingWindowSegmentationModel(SegmentationModelInterface):
         if self.stride < 1:
             raise ValueError(f"stride ({self.stride}) must be >= 1")
 
-        if self.aggregation_method not in ["majority_vote"]:
+        if self.aggregation_method not in ["majority_vote", "confidence_weighted"]:
             raise ValueError(
                 f"aggregation_method '{self.aggregation_method}' is not supported. "
-                "Supported methods: 'majority_vote'",
+                "Supported methods: 'majority_vote', 'confidence_weighted'",
             )
 
     def _compute_metrics(
