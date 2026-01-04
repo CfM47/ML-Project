@@ -142,14 +142,40 @@ Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de mo
 % - Mecanismo de atención
 % - Adaptación para segmentación semántica
 % - Hiperparámetros utilizados
+La segmentación se aborda mediante un modelo basado en Vision Transformers (ViT) adaptado a un esquema encoder–decoder, diseñado para producir mapas de segmentación densos a partir de imágenes de entrada en escala de grises.
+
+El modelo recibe como entrada imágenes bidimensionales de tamaño fijo, representadas como tensores con uno o más canales. En los casos en que la entrada no coincide con el número de canales esperado, se aplica una conversión a escala de grises para garantizar compatibilidad. La salida del modelo consiste en un tensor de segmentación multiclase, donde cada píxel es asignado a una de las clases definidas. Durante la inferencia, estas salidas se transforman en máscaras discretas mediante una operación de selección de la clase más probable por píxel.
+
+El proceso comienza con una etapa de patch embedding, en la cual la imagen se divide implícitamente en regiones no solapadas de tamaño uniforme. Cada región se proyecta a un espacio latente de dimensión fija, generando una secuencia de representaciones que conserva la información espacial global. A estas representaciones se les añaden embeddings posicionales aprendibles, lo que permite al modelo mantener la noción de localización relativa entre parches.
+
+La secuencia resultante se procesa mediante un codificador Transformer compuesto por múltiples capas de autoatención multi-cabeza y bloques feed-forward. Esta etapa permite modelar dependencias de largo alcance y capturar relaciones contextuales globales, lo cual es especialmente relevante en imágenes con estructuras complejas y patrones no locales.
+
+Tras el codificador, las representaciones latentes se reorganizan nuevamente en una estructura espacial bidimensional. A continuación, un decodificador convolucional progresivo realiza una serie de operaciones de refinamiento y reescalado espacial, incrementando gradualmente la resolución hasta alcanzar el tamaño original de la imagen. Esta etapa traduce la información global extraída por el Transformer en predicciones locales coherentes a nivel de píxel.
+
+El entrenamiento se lleva a cabo de extremo a extremo mediante una función de pérdida de entropía cruzada multiclase, optimizando directamente la correspondencia entre las predicciones del modelo y las máscaras de referencia. La evaluación produce pares de máscaras predichas y reales, lo que permite un análisis cualitativo y cuantitativo del desempeño del modelo en tareas de segmentación.
+
+En conjunto, esta arquitectura combina la capacidad de los Vision Transformers para modelar contexto global con la precisión espacial de decodificadores convolucionales, resultando adecuada para problemas de segmentación.
 
 \subsection{Swin Transformer}
 % - Arquitectura jerárquica
 % - Ventanas deslizantes (shifted windows)
 % - Ventajas sobre ViT estándar
 % - Hiperparámetros utilizados
+La estrategia de segmentación basada en Swin Transformers se apoya en una arquitectura jerárquica de atención local con ventanas desplazadas, adaptada para producir mapas de segmentación densos a partir de imágenes de microscopía electrónica.
 
-\subsection{Segmentación basada en quadtree}
+El modelo recibe como entrada imágenes bidimensionales de tamaño fijo, representadas como tensores en escala de grises. En casos donde la información de entrada presenta múltiples canales, se aplica una conversión previa para garantizar consistencia con la arquitectura. La salida del modelo es un mapa de segmentación multiclase con la misma resolución espacial que la imagen de entrada, en el que cada píxel es asignado a una de las clases consideradas.
+
+El procesamiento se inicia mediante una etapa de patch embedding jerárquica, en la cual la imagen se descompone en parches de pequeño tamaño que son proyectados a un espacio latente inicial. A diferencia de los Vision Transformers clásicos, el modelo Swin organiza estas representaciones en una estructura piramidal de múltiples etapas, donde la resolución espacial se reduce progresivamente y la dimensión de las características aumenta. En cada etapa, la atención se calcula de forma local dentro de ventanas, alternando ventanas fijas y desplazadas, lo que permite capturar dependencias espaciales tanto locales como de mayor alcance con un costo computacional controlado.
+
+Las características extraídas por el backbone Swin corresponden a una representación de baja resolución espacial pero alta riqueza semántica. Para su uso en segmentación densa, estas representaciones se reorganizan y se adaptan mediante una etapa intermedia de refinamiento y reescalado, con el objetivo de armonizar la resolución con la del decodificador.
+
+Posteriormente, un decodificador convolucional progresivo reconstruye la resolución original de la imagen. Este decodificador realiza una serie de operaciones de convolución, normalización y reescalado espacial, transformando las representaciones latentes jerárquicas en predicciones a nivel de píxel. La última proyección produce un conjunto de mapas de probabilidad, uno por clase, que se convierten en máscaras discretas mediante una asignación por máxima probabilidad.
+
+El modelo se entrena de extremo a extremo utilizando una función de pérdida de entropía cruzada multiclase, optimizando directamente la coherencia entre las máscaras predichas y las anotaciones de referencia. Durante la evaluación, el modelo genera pares de máscaras predichas y reales, lo que permite analizar su desempeño tanto de forma cuantitativa como cualitativa.
+
+Esta estrategia aprovecha la naturaleza jerárquica y la atención localizada del Swin Transformer para modelar de manera eficiente estructuras complejas a múltiples escalas, resultando especialmente adecuada para tareas de segmentación en imágenes con alta variabilidad textural y patrones multiescala.
+
+\subsection{Quadtree}
 La estrategia de segmentación basada en quadtree adopta un enfoque jerárquico y recursivo, en el cual la imagen se descompone progresivamente en regiones cuadradas de menor tamaño en función de la confianza de un clasificador subyacente. Este método no pertenece al estado del arte en segmentación, pero permite reutilizar modelos de clasificación preentrenados para abordar tareas de segmentación bajo restricciones computacionales.
 
 El modelo opera sobre imágenes de tamaño fijo y genera máscaras de segmentación a nivel de píxel mediante la clasificación iterativa de regiones. Cada región es evaluada por un clasificador que asigna una etiqueta y una confianza asociada. Si la confianza supera un umbral predefinido, la región se considera homogénea y se asigna directamente a la máscara de salida. En caso contrario, la región se subdivide en cuatro cuadrantes, repitiendo el proceso de forma recursiva.
@@ -194,12 +220,12 @@ Cada bloque convolucional aplica la siguiente secuencia:
     \item Max Pooling 2×2 con stride=2
 \end{enumerate}
 
-Se usa un kernel de 3×3 porque es el tamaño mínimo que captura información 
+Se usa un kernel de $3 \times 3$ porque es el tamaño mínimo que captura información 
 espacial (arriba, abajo, izquierda, derecha y diagonales). Al apilar múltiples 
 capas con kernels pequeños se obtiene un campo receptivo grande con menos 
 parámetros que usando un kernel grande directamente.
 
-El padding de 1 píxel mantiene las dimensiones espaciales constantes después 
+El padding de $1$ píxel mantiene las dimensiones espaciales constantes después 
 de cada convolución, lo que simplifica el diseño de la red.
 
 Batch Normalization se incluye para acelerar el entrenamiento y estabilizar 
