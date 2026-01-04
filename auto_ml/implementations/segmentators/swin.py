@@ -141,31 +141,29 @@ class SwinModel(SegmentationModelInterface):
                 )
                 epoch_metrics["val_loss"] = avg_val_loss
 
-                # Early stopping check
-                if self.patience is not None:
-                    if avg_val_loss < best_val_loss:
-                        best_val_loss = avg_val_loss
-                        best_model_state = copy.deepcopy(self.model.state_dict())
-                        patience_counter = 0
-                        status = "improved"
-                    else:
-                        patience_counter += 1
-                        status = f"no improvement ({patience_counter}/{self.patience})"
-
-                    print(
-                        f"Epoch {epoch + 1}/{self.epochs}, "
-                        f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}, "
-                        f"Status: {status}",
-                    )
-
-                    if patience_counter >= self.patience:
-                        print(f"Early stopping at epoch {epoch + 1}")
-                        break
+                # Track best model (always when validation is provided)
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    best_model_state = copy.deepcopy(self.model.state_dict())
+                    patience_counter = 0
+                    status = "improved"
                 else:
-                    print(
-                        f"Epoch {epoch + 1}/{self.epochs}, "
-                        f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}",
-                    )
+                    patience_counter += 1
+                    if self.patience is not None:
+                        status = f"no improvement ({patience_counter}/{self.patience})"
+                    else:
+                        status = "no improvement"
+
+                print(
+                    f"Epoch {epoch + 1}/{self.epochs}, "
+                    f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}, "
+                    f"Status: {status}",
+                )
+
+                # Early stopping check (only when patience is set)
+                if self.patience is not None and patience_counter >= self.patience:
+                    print(f"Early stopping at epoch {epoch + 1}")
+                    break
             else:
                 print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
 
