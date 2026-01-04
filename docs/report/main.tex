@@ -149,11 +149,18 @@ Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de mo
 % - Ventajas sobre ViT estándar
 % - Hiperparámetros utilizados
 
-\subsection{Segmentación por Quadtree}
-% - Concepto de descomposición espacial recursiva
-% - Algoritmo de subdivisión
-% - Criterios de parada (umbral de confianza, tamaño mínimo, profundidad)
-% - Optimización de hiperparámetros con Simulated Annealing
+\subsection{Segmentación basada en quadtree}
+La estrategia de segmentación basada en quadtree adopta un enfoque jerárquico y recursivo, en el cual la imagen se descompone progresivamente en regiones cuadradas de menor tamaño en función de la confianza de un clasificador subyacente. Este método no pertenece al estado del arte en segmentación, pero permite reutilizar modelos de clasificación preentrenados para abordar tareas de segmentación bajo restricciones computacionales.
+
+El modelo opera sobre imágenes de tamaño fijo y genera máscaras de segmentación a nivel de píxel mediante la clasificación iterativa de regiones. Cada región es evaluada por un clasificador que asigna una etiqueta y una confianza asociada. Si la confianza supera un umbral predefinido, la región se considera homogénea y se asigna directamente a la máscara de salida. En caso contrario, la región se subdivide en cuatro cuadrantes, repitiendo el proceso de forma recursiva.
+
+El criterio de parada de la recursión se define por tres condiciones: alcanzar un nivel mínimo de confianza, llegar a un tamaño mínimo de región o exceder una profundidad máxima de subdivisión. De esta forma, el modelo equilibra precisión espacial y costo computacional, evitando una subdivisión excesiva en regiones con información limitada.
+
+El proceso de entrenamiento se divide conceptualmente en dos etapas. En primer lugar, el clasificador utilizado por el esquema quadtree es entrenado de manera independiente empleando un conjunto de datos de clasificación externo. Este clasificador puede estar basado en redes convolucionales, arquitecturas transformer o cualquier otro modelo, lo que permite transferir conocimiento desde tareas de clasificación hacia la segmentación.
+
+En segundo lugar, el modelo de segmentación ajusta sus hiperparámetros estructurales, en particular el umbral de confianza, el tamaño mínimo de región y la profundidad máxima del quadtree. Cuando se habilita el modo AutoML, estos hiperparámetros son optimizados mediante una metaheurística de recocido simulado (simulated annealing), utilizando un subconjunto de validación derivado del dataset de segmentación. La optimización se guía por una métrica seleccionada previamente, permitiendo adaptar el comportamiento del quadtree al compromiso deseado entre detalle espacial y generalización.
+
+Una vez finalizado el proceso de optimización, el modelo se configura con la mejor combinación de hiperparámetros encontrada y se evalúa sobre el conjunto completo de entrenamiento.
 
 \subsubsection{Clasificador CNN}
 
