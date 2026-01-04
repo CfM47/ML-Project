@@ -294,24 +294,63 @@ tamaño.
 % - Diferencias con ViT de segmentación
 
 \subsection{Pipeline de Aumentación de Datos}
+Se implementó un conjunto completo de técnicas de aumentación de datos con el objetivo de incrementar la diversidad del dataset y mejorar la generalización de los modelos. La estrategia combinó transformaciones geométricas, fotométricas y específicas para SEM, aplicadas de manera secuencial y probabilística según un pipeline de aumentación.
 
 \subsubsection{Aumentaciones Geométricas}
 % - Rotación, volteo, escala, traslación, recorte
 % - Aplicación simultánea a imagen y máscara
+Afectan tanto a imágenes como a máscaras, manteniendo la alineación espacial:
+
+\begin{itemize}
+    \item Rotación: Rota la imagen y la máscara dentro de un rango definido, simulando diferentes orientaciones de la muestra.
+    \item Volteo: Invierte horizontal o verticalmente.
+    \item Escalado: Realiza zoom in/out manteniendo el tamaño original.
+    \item Traslación: Desplaza la imagen y máscara horizontal y/o verticalmente.
+    \item Recorte aleatorio: Extrae subregiones aleatorias, redimensionadas al tamaño original.
+\end{itemize}
+
+Estas transformaciones permiten al modelo generalizar a variaciones espaciales de la muestra.
 
 \subsubsection{Aumentaciones Fotométricas}
 % - Brillo, contraste, ruido gaussiano, desenfoque, gamma
 % - Aplicación solo a imagen (no a máscara)
 
+Modifican únicamente las imágenes, simulando variaciones en iluminación y ruido, sin afectar las máscaras:
+
+\begin{itemize}
+    \item Brillo.
+    \item Contraste.
+    \item Corrección gamma.
+    \item Ruido gaussiano.
+    \item Desenfoque gaussiano.
+\end{itemize}
+
+Estas técnicas permiten al modelo aprender invariancia frente a condiciones de adquisición o ruido instrumental.
+
 \subsubsection{Aumentaciones Específicas para SEM}
-% - Deformación elástica
-% - Ecualización adaptativa de histograma (CLAHE)
-% - Artefactos de carga eléctrica
-% - Ruido de líneas de escaneo
+Diseñadas para capturar artefactos y características típicas de imágenes SEM:
+
+\begin{itemize}
+    \item Deformación elástica (ElasticDeformationAugmentator): Simula variaciones naturales en texturas de roca o deformaciones durante la adquisición.
+    \item Ecualización adaptativa de histograma (AdaptiveHistogramEqualizationAugmentator): Mejora contraste local mediante CLAHE.
+    \item Artefactos de carga: Añade manchas típicas de muestras no conductivas.
+    \item Ruido de líneas de escaneo (ScanLineNoiseAugmentator): Simula líneas de escaneo o barrido que aparecen en SEM.
+\end{itemize}
+
+Estas técnicas aumentan la robustez del modelo frente a artefactos específicos de la microscopía electrónica.
 
 \subsubsection{Composición de Aumentaciones}
 % - Secuencial, selección aleatoria, aplicación probabilística
 % - Estrategias de combinación utilizadas
+Se implementaron métodos compuestos que permiten combinar varias aumentaciones para crear un pipeline complejo y controlado:
+
+\begin{itemize}
+    \item Secuencial: Aplica múltiples aumentaciones de manera secuencial.
+    \item Aplicación probabilistica: Aplica una aumentación con una probabilidad determinada, introduciendo variabilidad controlada.
+    \item Selección aleatoria: Elige una aumentación de un conjunto con probabilidades ponderadas.
+\end{itemize}
+
+Estas estrategias permiten generar un dataset enriquecido sin comprometer la coherencia entre imágenes y máscaras.
 
 \subsection{Métricas de Evaluación}
 
