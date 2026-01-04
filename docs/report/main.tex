@@ -329,7 +329,14 @@ tamaño.
 % - Redimensionamiento de regiones
 % - Diferencias con ViT de segmentación
 
-\subsection{Pipeline de Aumentación de Datos}
+Se empleó un clasificador basado en Vision Transformer (ViT) como mecanismo de inferencia semántica a nivel de región, destinado a transferir conocimiento desde una tarea de clasificación supervisada hacia esquemas de segmentación guiada. Este modelo no actúa como segmentador directo, sino como un estimador de clase aplicado sobre regiones espaciales extraídas de la imagen, cuyo resultado se utiliza posteriormente para construir máscaras de segmentación mediante estrategias geométricas.
+
+El clasificador adopta una arquitectura ViT estándar con token de clasificación (\emph{CLS}), en la que la imagen de entrada se divide en parches no solapados y se proyecta a un espacio embebido mediante una capa convolucional equivalente a la etapa de \emph{patch embedding}. La secuencia resultante, enriquecida con embeddings posicionales, es procesada por un codificador Transformer profundo, y la representación final asociada al token \emph{CLS} se utiliza como descriptor global de la región analizada. Esta representación se proyecta a un espacio de clases mediante una cabeza de clasificación multicapa.
+
+Desde el punto de vista operativo, el modelo se integra como un clasificador de regiones de tamaño fijo, lo que requiere un preprocesamiento consistente que normaliza, ajusta el número de canales y reescala cada región al tamaño de entrada esperado por la arquitectura. Esta restricción permite garantizar una semántica homogénea en la inferencia, independientemente del tamaño real de la región en la imagen original.
+
+
+\section{Pipeline de Aumentación de Datos}
 Se implementó un conjunto completo de técnicas de aumentación de datos con el objetivo de incrementar la diversidad del dataset y mejorar la generalización de los modelos. La estrategia combinó transformaciones geométricas, fotométricas y específicas para SEM, aplicadas de manera secuencial y probabilística según un pipeline de aumentación.
 
 \subsubsection{Aumentaciones Geométricas}
