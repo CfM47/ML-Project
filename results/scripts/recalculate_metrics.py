@@ -4,6 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+# Directory where this script lives
+SCRIPT_DIR = Path(__file__).parent
+# Results directory is the parent of scripts/
+RESULTS_DIR = SCRIPT_DIR.parent
+
 
 def recalculate_macro_metrics(results: dict[str, Any]) -> dict[str, Any]:
     """
@@ -64,7 +69,7 @@ def recalculate_macro_metrics(results: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> None:
     """Run the recalculation of macro metrics."""
-    results_path = Path("results/results_cache.json")
+    results_path = RESULTS_DIR / "results_cache.json"
 
     if not results_path.exists():
         print(f"Error: {results_path} does not exist")
