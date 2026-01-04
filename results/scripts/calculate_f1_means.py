@@ -4,6 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+# Directory where this script lives
+SCRIPT_DIR = Path(__file__).parent
+# Results directory is the parent of scripts/
+RESULTS_DIR = SCRIPT_DIR.parent
+
 
 def calculate_f1_means(results: dict[str, Any]) -> dict[str, dict[str, float]]:
     """
@@ -40,8 +45,8 @@ def calculate_f1_means(results: dict[str, Any]) -> dict[str, dict[str, float]]:
 
 def main() -> None:
     """Run the F1 mean calculation."""
-    results_path = Path("results/results_cache.json")
-    output_path = Path("results/f1_means.json")
+    results_path = RESULTS_DIR / "results_cache.json"
+    output_path = RESULTS_DIR / "f1_means.json"
 
     if not results_path.exists():
         print(f"Error: {results_path} does not exist")
