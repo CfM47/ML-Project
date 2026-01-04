@@ -16,14 +16,14 @@ from auto_ml.interfaces import (
     SegmentationDatasetInterface,
     SegmentationModelInterface,
 )
-from auto_ml.models.swin.model import SwinSegmentation
+from auto_ml.models.swin.segmentation import SwinSegmentation
 
 
 class SwinModel(SegmentationModelInterface):
     """
     Swin Transformer Model implementation for AutoML.
 
-    Wraps the SwinSegmentation model from swin.model.
+    Wraps the SwinSegmentation model from swin.segmentation.
     """
 
     def __init__(  # noqa: D107
