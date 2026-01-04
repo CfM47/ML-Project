@@ -23,7 +23,7 @@ def calculate_f1_means(results: dict[str, Any]) -> dict[str, dict[str, float]]:
         ...
     }
     """
-    f1_means = {}
+    f1_means: dict[str, dict[str, float]] = {}
 
     for experiment_key, experiment_data in results.items():
         f1_means[experiment_key] = {}
