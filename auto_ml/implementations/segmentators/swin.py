@@ -1,5 +1,6 @@
 """Swin Transformer model implementation for segmentation."""
 
+import copy
 from typing import Dict, List
 
 import numpy as np
@@ -34,11 +35,13 @@ class SwinModel(SegmentationModelInterface):
         depths: List[int] | None = None,
         num_heads: List[int] | None = None,
         window_size: List[int] | None = None,
+        patience: int | None = None,
         device: str = "auto",
     ) -> None:
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        self.patience = patience
 
         # Defaults for Swin-T if not provided
         self.embed_dim = embed_dim
@@ -85,14 +88,21 @@ class SwinModel(SegmentationModelInterface):
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
 
-        self.model.train()
+        # Log training mode
+        self._log_training_mode(validation_dataset)
+
+        # Early stopping state
+        best_val_loss = float("inf")
+        best_model_state: dict | None = None
+        patience_counter = 0
 
         total_loss: float = 0
         history: List[Dict[str, float]] = []
+        epochs_trained = 0
 
         for epoch in range(self.epochs):
             epoch_loss = 0
-            self.model.train()  # Ensure in train mode
+            self.model.train()
 
             for inputs, masks in dataloader:
                 inputs = inputs.to(self.device)
@@ -116,52 +126,109 @@ class SwinModel(SegmentationModelInterface):
 
             avg_loss = epoch_loss / len(dataloader) if len(dataloader) > 0 else 0
             total_loss = float(avg_loss)
+            epochs_trained = epoch + 1
 
             epoch_metrics = {
                 "epoch": epoch + 1,
                 "train_loss": float(avg_loss),
             }
 
-            # Validation Step
+            # Validation step
             if validation_dataset:
-                self.model.eval()
-                val_dataset_torch = InMemoryPyTorchDataset(validation_dataset)
-                val_loader = DataLoader(val_dataset_torch, batch_size=1, shuffle=False)
-                val_loss = 0.0
+                avg_val_loss = self._compute_validation_loss(
+                    validation_dataset,
+                    criterion,
+                )
+                epoch_metrics["val_loss"] = avg_val_loss
 
-                with torch.no_grad():
-                    for v_inputs, v_masks in val_loader:
-                        v_inputs = v_inputs.to(self.device)
-                        v_masks = v_masks.to(self.device)
+                # Track best model (always when validation is provided)
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    best_model_state = copy.deepcopy(self.model.state_dict())
+                    patience_counter = 0
+                    status = "improved"
+                else:
+                    patience_counter += 1
+                    if self.patience is not None:
+                        status = f"no improvement ({patience_counter}/{self.patience})"
+                    else:
+                        status = "no improvement"
 
-                        if v_inputs.shape[1] != 1:
-                            v_inputs = (
-                                v_inputs[:, 0:1, :, :] * 0.299
-                                + v_inputs[:, 1:2, :, :] * 0.587
-                                + v_inputs[:, 2:3, :, :] * 0.114
-                            )
-
-                        v_outputs = self.model(v_inputs)
-                        v_loss = criterion(v_outputs, v_masks)
-                        val_loss += v_loss.item()
-
-                avg_val_loss = val_loss / len(val_loader) if len(val_loader) > 0 else 0
-                epoch_metrics["val_loss"] = float(avg_val_loss)
                 print(
                     f"Epoch {epoch + 1}/{self.epochs}, "
-                    f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}",
+                    f"Loss: {avg_loss:.6f}, Val Loss: {avg_val_loss:.6f}, "
+                    f"Status: {status}",
                 )
+
+                # Early stopping check (only when patience is set)
+                if self.patience is not None and patience_counter >= self.patience:
+                    print(f"Early stopping at epoch {epoch + 1}")
+                    break
             else:
                 print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.6f}")
 
             history.append(epoch_metrics)
 
+        # Restore best model if early stopping was used
+        if best_model_state is not None:
+            self.model.load_state_dict(best_model_state)
+            print(f"Restored best model (val_loss: {best_val_loss:.6f})")
+            total_loss = best_val_loss
+
         return MetricsResultInterface(
             loss=total_loss,
             accuracy=0.0,
-            additional_metrics={"epochs_trained": self.epochs},
+            additional_metrics={"epochs_trained": epochs_trained},
             history=history,
         )
+
+    def _log_training_mode(
+        self,
+        validation_dataset: SegmentationDatasetInterface | None,
+    ) -> None:
+        """Log the training mode based on configuration."""
+        if self.patience is not None and validation_dataset is not None:
+            print(
+                f"Training for up to {self.epochs} epochs "
+                f"with early stopping (patience={self.patience})",
+            )
+        elif self.patience is not None and validation_dataset is None:
+            print(
+                f"Training for {self.epochs} epochs "
+                f"(patience ignored: no validation dataset)",
+            )
+        else:
+            print(f"Training for {self.epochs} epochs (no early stopping)")
+
+    def _compute_validation_loss(
+        self,
+        validation_dataset: SegmentationDatasetInterface,
+        criterion: nn.Module,
+    ) -> float:
+        """Compute average validation loss."""
+        self.model.eval()
+        val_dataset_torch = InMemoryPyTorchDataset(validation_dataset)
+        val_loader = DataLoader(val_dataset_torch, batch_size=1, shuffle=False)
+        val_loss = 0.0
+
+        with torch.no_grad():
+            for v_inputs, v_masks in val_loader:
+                v_inputs = v_inputs.to(self.device)
+                v_masks = v_masks.to(self.device)
+
+                if v_inputs.shape[1] != 1:
+                    v_inputs = (
+                        v_inputs[:, 0:1, :, :] * 0.299
+                        + v_inputs[:, 1:2, :, :] * 0.587
+                        + v_inputs[:, 2:3, :, :] * 0.114
+                    )
+
+                v_outputs = self.model(v_inputs)
+                v_loss = criterion(v_outputs, v_masks)
+                val_loss += v_loss.item()
+
+        avg_val_loss = val_loss / len(val_loader) if len(val_loader) > 0 else 0
+        return float(avg_val_loss)
 
     def evaluate(self, dataset: SegmentationDatasetInterface) -> List[MaskPair]:
         """Evaluate the model and return predicted/real mask pairs."""
