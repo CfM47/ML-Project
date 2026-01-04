@@ -135,6 +135,11 @@ Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de mo
 % - División train/test
 
 \section{Estrategias de Segmentación}
+La segmentación de zonas frágiles y dúctiles se aborda mediante un conjunto de estrategias complementarias que responden a distintos niveles de complejidad y granularidad en la representación de la imagen. En primer lugar, se consideran arquitecturas basadas en Vision Transformers y Swin Transformers, seleccionadas por su capacidad para modelar dependencias espaciales de largo alcance y por su consolidación como enfoques de referencia en tareas de segmentación densa. Estos modelos permiten aprender representaciones globales y jerárquicas directamente a partir de la imagen completa, proporcionando una base sólida para la identificación precisa de regiones con comportamiento mecánico diferenciado.
+
+De forma complementaria, se exploran estrategias de segmentación indirecta que reutilizan conocimiento previamente adquirido en tareas de clasificación. En este enfoque, la información semántica extraída por modelos entrenados para discriminar regiones frágiles y dúctiles se emplea como guía para definir esquemas de segmentación basados en particiones espaciales adaptativas. En particular, se consideran métodos que descomponen la imagen en regiones locales cuya resolución y extensión se ajustan dinámicamente en función de la complejidad visual y la confianza de la clasificación, permitiendo una transición controlada entre análisis global y local.
+
+Este planteamiento unifica modelos de segmentación directa y estrategias guiadas por clasificación bajo un mismo marco conceptual, facilitando la comparación entre enfoques de distinta naturaleza y sentando las bases para la incorporación progresiva de métodos alternativos de particionado espacial en subsecciones posteriores.
 
 \subsection{Vision Transformer (ViT)}
 % - Arquitectura general
@@ -188,7 +193,12 @@ En segundo lugar, el modelo de segmentación ajusta sus hiperparámetros estruct
 
 Una vez finalizado el proceso de optimización, el modelo se configura con la mejor combinación de hiperparámetros encontrada y se evalúa sobre el conjunto completo de entrenamiento.
 
-\subsubsection{Clasificador CNN}
+\section{Modelos de clasificación para segmentación}
+En esta sección se describen los modelos de clasificación empleados como componentes fundamentales de las estrategias de segmentación guiada basadas en particionado espacial. A diferencia de los enfoques de segmentación directa, estos métodos delegan la toma de decisiones semánticas a clasificadores entrenados para discriminar entre zonas frágiles y dúctiles, cuya salida se utiliza posteriormente para construir máscaras de segmentación a distintas escalas.
+
+El objetivo de esta sección es caracterizar los clasificadores utilizados, independientemente del esquema de particionado específico en el que se integran. De este modo, se separa explícitamente el análisis del modelo de clasificación del mecanismo geométrico de segmentación, permitiendo evaluar de forma aislada el impacto de la arquitectura del clasificador en el desempeño final del sistema. Las subsecciones siguientes presentan los distintos modelos considerados.
+
+\subsection{Clasificador CNN}
 
 El clasificador basado en Redes Neuronales Convolucionales (CNN) fue diseñado 
 para clasificar regiones de tamaño variable extraídas por el algoritmo Quadtree.
