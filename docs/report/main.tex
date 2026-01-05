@@ -246,18 +246,38 @@ En la fase de inferencia, el modelo genera mapas de activación multiclase que s
 El segmentador basado en Swin Transformer combina eficiencia computacional, representación jerárquica multiescala y mecanismos de regularización explícitos, constituyendo una alternativa de alto nivel dentro del estado del arte para segmentación semántica en imágenes complejas.
 
 
-\subsection{Quadtree}
-La estrategia de segmentación basada en quadtree adopta un enfoque jerárquico y recursivo, en el cual la imagen se descompone progresivamente en regiones cuadradas de menor tamaño en función de la confianza de un clasificador subyacente. Este método no pertenece al estado del arte en segmentación, pero permite reutilizar modelos de clasificación preentrenados para abordar tareas de segmentación bajo restricciones computacionales.
+\subsection{Descomposición quadtree}
 
-El modelo opera sobre imágenes de tamaño fijo y genera máscaras de segmentación a nivel de píxel mediante la clasificación iterativa de regiones. Cada región es evaluada por un clasificador que asigna una etiqueta y una confianza asociada. Si la confianza supera un umbral predefinido, la región se considera homogénea y se asigna directamente a la máscara de salida. En caso contrario, la región se subdivide en cuatro cuadrantes, repitiendo el proceso de forma recursiva.
+El enfoque de segmentación basado en quadtree difiere de manera fundamental de los modelos neuronales de tipo extremo a extremo. En lugar de aprender directamente una correspondencia píxel a píxel, este método se formula como un algoritmo recursivo de tipo \emph{divide y vencerás}, que combina un modelo de clasificación independiente con una estrategia adaptativa de partición espacial. Esta aproximación permite razonar sobre regiones completas de la imagen y ajustar dinámicamente el nivel de detalle de la segmentación en función de la complejidad local.
 
-El criterio de parada de la recursión se define por tres condiciones: alcanzar un nivel mínimo de confianza, llegar a un tamaño mínimo de región o exceder una profundidad máxima de subdivisión. De esta forma, el modelo equilibra precisión espacial y costo computacional, evitando una subdivisión excesiva en regiones con información limitada.
+\subsubsection{Principio de divide y vencerás mediante quadtree}
 
-El proceso de entrenamiento se divide conceptualmente en dos etapas. En primer lugar, el clasificador utilizado por el esquema quadtree es entrenado de manera independiente empleando un conjunto de datos de clasificación externo. Este clasificador puede estar basado en redes convolucionales, arquitecturas transformer o cualquier otro modelo, lo que permite transferir conocimiento desde tareas de clasificación hacia la segmentación.
+El algoritmo opera de manera recursiva sobre regiones rectangulares de la imagen. Inicialmente, la imagen completa se considera como una única región. Para cada región analizada, se consulta a un clasificador externo con el fin de estimar la clase predominante y un nivel de confianza asociado a dicha predicción.
 
-En segundo lugar, el modelo de segmentación ajusta sus hiperparámetros estructurales, en particular el umbral de confianza, el tamaño mínimo de región y la profundidad máxima del quadtree. Cuando se habilita el modo AutoML, estos hiperparámetros son optimizados mediante una metaheurística de recocido simulado (simulated annealing), utilizando un subconjunto de validación derivado del dataset de segmentación. La optimización se guía por una métrica seleccionada previamente, permitiendo adaptar el comportamiento del quadtree al compromiso deseado entre detalle espacial y generalización.
+Si la confianza supera un umbral predefinido, se asume que la región es suficientemente homogénea y se asigna la clase predicha a todos los píxeles que la componen. En caso contrario, el algoritmo interpreta que la región contiene información heterogénea o ambigua y procede a subdividirla en cuatro cuadrantes de igual tamaño. Este proceso se repite de forma independiente para cada subregión.
 
-Una vez finalizado el proceso de optimización, el modelo se configura con la mejor combinación de hiperparámetros encontrada y se evalúa sobre el conjunto completo de entrenamiento.
+La recursión se detiene cuando se cumple alguna de las siguientes condiciones: la confianza del clasificador es suficiente, la región alcanza un tamaño mínimo que impide una subdivisión significativa, o se llega a una profundidad máxima de recursión. Como resultado, el método genera regiones extensas y uniformes en zonas simples de la imagen, y particiones más finas en áreas con mayor complejidad estructural.
+
+\subsubsection{Separación entre segmentación y clasificación}
+
+Un rasgo central de este enfoque es la separación explícita entre la lógica de segmentación y el modelo de clasificación utilizado para tomar decisiones locales. El algoritmo quadtree se limita a gestionar la recursión y la asignación espacial de etiquetas, mientras que el clasificador actúa como un componente intercambiable encargado de evaluar regiones de la imagen.
+
+Esta separación permite desacoplar completamente la estrategia de partición del método concreto de clasificación empleado. En consecuencia, es posible evaluar distintos clasificadores bajo un mismo esquema de segmentación sin modificar el algoritmo quadtree, lo que aporta flexibilidad experimental y facilita el análisis comparativo de modelos.
+
+\subsubsection{Proceso de ajuste de parámetros mediante metaheurísticas}
+
+A diferencia de los modelos neuronales clásicos, el proceso de entrenamiento de este segmentador no se basa en retropropagación de gradientes. En su lugar, el ajuste se centra en la optimización de los hiperparámetros que controlan el comportamiento del algoritmo recursivo, tales como el umbral de confianza, el tamaño mínimo de región y la profundidad máxima de subdivisión.
+
+Este ajuste se plantea como un problema de optimización global y se resuelve mediante una metaheurística de recocido simulado (\emph{simulated annealing}). El procedimiento explora el espacio de hiperparámetros evaluando configuraciones candidatas sobre un conjunto de validación, aceptando tanto mejoras directas como, de manera probabilística, configuraciones subóptimas en etapas tempranas de la búsqueda. Este mecanismo permite escapar de óptimos locales y favorece una exploración más amplia del espacio de soluciones.
+
+Al finalizar el proceso, el algoritmo conserva la configuración de hiperparámetros que produjo el mejor desempeño global, la cual se fija para la generación de resultados finales.
+
+\subsubsection{Generación y evaluación de las segmentaciones}
+
+Durante la fase de evaluación, el algoritmo se aplica de manera independiente a cada imagen del conjunto de datos. A partir de una máscara inicialmente vacía, el proceso recursivo va asignando etiquetas a las distintas regiones según las decisiones tomadas en cada nivel de la jerarquía quadtree. El resultado final es una máscara de segmentación completa, construida de forma adaptativa en función de la complejidad local de la imagen.
+
+Las máscaras predichas se comparan posteriormente con las máscaras de referencia mediante las métricas definidas en el framework de evaluación, lo que permite analizar cuantitativamente el desempeño del método y contrastarlo con los enfoques basados en redes neuronales profundas.
+
 
 \section{Modelos de clasificación para segmentación}
 En esta sección se describen los modelos de clasificación empleados como componentes fundamentales de las estrategias de segmentación guiada basadas en particionado espacial. A diferencia de los enfoques de segmentación directa, estos métodos delegan la toma de decisiones semánticas a clasificadores entrenados para discriminar entre zonas frágiles y dúctiles, cuya salida se utiliza posteriormente para construir máscaras de segmentación a distintas escalas.
