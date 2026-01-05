@@ -410,16 +410,30 @@ agrupan por tamaño para formar batches, ya que las regiones del Quadtree tienen
 dimensiones variables y solo se pueden apilar en un tensor imágenes del mismo 
 tamaño.
 
-\subsubsection{Clasificador ViT}
-% - Adaptación de ViT para clasificación de regiones
-% - Redimensionamiento de regiones
-% - Diferencias con ViT de segmentación
+\subsection{Clasificador ViT}
 
-Se empleó un clasificador basado en Vision Transformer (ViT) como mecanismo de inferencia semántica a nivel de región, destinado a transferir conocimiento desde una tarea de clasificación supervisada hacia esquemas de segmentación guiada. Este modelo no actúa como segmentador directo, sino como un estimador de clase aplicado sobre regiones espaciales extraídas de la imagen, cuyo resultado se utiliza posteriormente para construir máscaras de segmentación mediante estrategias geométricas.
+El clasificador basado en Vision Transformer se utiliza como un componente auxiliar dentro del esquema de segmentación jerárquica, con el objetivo de asignar una única etiqueta a regiones completas de la imagen. A diferencia de los modelos de segmentación, este enfoque no opera a nivel de píxel, sino que produce una predicción global acompañada de una medida de confianza, la cual resulta fundamental para guiar las decisiones del algoritmo quadtree.
 
-El clasificador adopta una arquitectura ViT estándar con token de clasificación (\emph{CLS}), en la que la imagen de entrada se divide en parches no solapados y se proyecta a un espacio embebido mediante una capa convolucional equivalente a la etapa de \emph{patch embedding}. La secuencia resultante, enriquecida con embeddings posicionales, es procesada por un codificador Transformer profundo, y la representación final asociada al token \emph{CLS} se utiliza como descriptor global de la región analizada. Esta representación se proyecta a un espacio de clases mediante una cabeza de clasificación multicapa.
+\subsubsection{Arquitectura del clasificador}
 
-Desde el punto de vista operativo, el modelo se integra como un clasificador de regiones de tamaño fijo, lo que requiere un preprocesamiento consistente que normaliza, ajusta el número de canales y reescala cada región al tamaño de entrada esperado por la arquitectura. Esta restricción permite garantizar una semántica homogénea en la inferencia, independientemente del tamaño real de la región en la imagen original.
+La arquitectura adoptada corresponde a un Vision Transformer estándar para tareas de clasificación de imágenes, cuyo elemento distintivo es el uso de un token de clasificación. La imagen de entrada se divide inicialmente en parches de tamaño fijo, los cuales son proyectados a un espacio de características de alta dimensión mediante un proceso de incrustación. A estas representaciones se les añade información posicional aprendible, permitiendo al modelo preservar las relaciones espaciales entre los distintos parches.
+
+Sobre esta secuencia de representaciones se introduce un token de clasificación, el cual no está asociado a ninguna región específica de la imagen. Este token se antepone a la secuencia de parches y participa activamente en los mecanismos de autoatención del transformer. A lo largo de las capas del encoder, el token de clasificación actúa como un agregador de información global, concentrando en una única representación los patrones más relevantes presentes en la imagen completa.
+
+Finalizado el procesamiento por el transformer, se descartan las representaciones asociadas a los parches y se conserva únicamente el vector correspondiente al token de clasificación. Este vector se proyecta mediante una cabeza de clasificación hacia el espacio de clases, generando puntuaciones que se transforman en probabilidades normalizadas. Estas probabilidades permiten obtener tanto la etiqueta predicha como una estimación explícita de la confianza del modelo.
+
+\subsubsection{Uso del clasificador en regiones de tamaño arbitrario}
+
+Dado que el clasificador se emplea para evaluar regiones de distinto tamaño dentro del esquema quadtree, resulta necesario un preprocesamiento que garantice la compatibilidad con la entrada de tamaño fijo requerida por el Vision Transformer. Cada región extraída de la imagen original se normaliza en formato y número de canales, y posteriormente se redimensiona mediante interpolación a la resolución esperada por el modelo.
+
+Este procedimiento permite aplicar un clasificador entrenado sobre imágenes completas a subregiones arbitrarias, manteniendo la coherencia de las predicciones y asegurando una integración transparente con el algoritmo de segmentación jerárquica.
+
+\subsubsection{Entrenamiento y rol dentro del framework}
+
+El clasificador puede entrenarse de manera independiente sobre conjuntos de datos externos de clasificación, utilizando un esquema supervisado estándar. Una vez finalizado el entrenamiento, el modelo se emplea principalmente en modo de inferencia, proporcionando predicciones rápidas y consistentes durante la ejecución del algoritmo quadtree.
+
+Dentro del framework AutoML, este clasificador actúa como un componente intercambiable, lo que permite evaluar distintas arquitecturas de clasificación bajo el mismo esquema de segmentación. De este modo, el análisis se centra en estudiar cómo la capacidad discriminativa del clasificador influye en la calidad final de la segmentación basada en descomposición jerárquica.
+
 
 
 \section{Pipeline de Aumentación de Datos}
