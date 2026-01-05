@@ -125,7 +125,50 @@ Estas limitaciones motivan la exploración de estrategias alternativas que permi
 
 Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de modelos y el ajuste de hiperparámetros, empleando metaheurísticas y considerando explícitamente las restricciones impuestas por un entorno de cómputo limitado. El objetivo de este estudio es evaluar la viabilidad y el desempeño de estas estrategias para la detección de zonas frágiles y dúctiles en imágenes SEM, comparando modelos del estado del arte con enfoques alternativos bajo condiciones realistas de entrenamiento y evaluación.
 
-\section{Metodología}
+\section{Metodología basada en AutoML}
+La resolución del problema de segmentación se abordó mediante un enfoque de AutoML diseñado específicamente para garantizar modularidad, reproducibilidad y comparabilidad sistemática entre distintas configuraciones experimentales. La metodología no se limita a la automatización del entrenamiento, sino que establece una arquitectura formal que define claramente cada etapa del flujo de datos y permite intercambiar componentes de manera controlada.
+
+Arquitectura general del pipeline
+
+El núcleo metodológico se basa en un pipeline lineal de procesamiento, en el cual los datos fluyen secuencialmente a través de nodos bien definidos. Este pipeline sigue el esquema general:
+
+\begin{equation}
+    \begin{aligned}
+        \text{Dataset inicial} & \rightarrow \text{Nodo de aumentación} \rightarrow \text{Nodo de modelo} \\ 
+        &\rightarrow \text{Nodo de evaluación} \rightarrow \text{Resultados finales}
+    \end{aligned}
+\end{equation}
+
+Cada etapa del pipeline encapsula una responsabilidad única y explícita, evitando dependencias implícitas y facilitando el análisis aislado del impacto de cada decisión metodológica. La coordinación de este flujo está a cargo de una clase orquestadora central, denominada \textit{AutoML}, cuya función es estrictamente organizativa.
+
+El diseño del framework se fundamenta en el uso extensivo de interfaces abstractas. Todas las etapas del pipeline implementan contratos formales definidos a nivel de interfaz, lo que permite desacoplar completamente la lógica de alto nivel de las implementaciones concretas. Este enfoque garantiza que diferentes estrategias —por ejemplo, distintos esquemas de validación o arquitecturas de red— puedan sustituirse sin alterar la estructura global del sistema.
+
+La metodología adopta el principio de composición: la clase \textit{AutoML} no implementa lógica de entrenamiento, aumentación ni evaluación, sino que recibe instancias de nodos que cumplen interfaces predefinidas y las ejecuta en el orden correcto. Esto resulta en un núcleo extremadamente estable y fácil de auditar desde el punto de vista metodológico.
+
+\subsection{Nodo de aumentación y partición de datos}
+El primer componente del pipeline es el nodo de aumentación de datos, responsable de transformar el dataset original y generar las particiones de entrenamiento y validación. Este nodo recibe el dataset completo y produce una lista de pares 
+$(D_{train},D_{val})$ lo que permite soportar tanto divisiones simples como esquemas de validación cruzada k-fold.
+
+Desde el punto de vista metodológico, esta decisión es clave: todas las transformaciones de datos y estrategias de partición quedan formalizadas en un único punto del pipeline, evitando fugas de información y asegurando que todos los modelos evaluados operen bajo condiciones comparables.
+
+\subsection{Nodo de modelo}
+El nodo de modelo constituye el núcleo computacional del sistema. Para cada par de datasets generado por el nodo de aumentación, este componente entrena una instancia del modelo especificado y posteriormente genera predicciones sobre el conjunto de validación. El resultado de esta etapa es una colección estructurada de pares de máscaras predichas y reales, organizada por pliegue cuando corresponde.
+
+Cada arquitectura se encapsula en una implementación concreta de este nodo, manteniendo la misma interfaz externa. Esto permite comparar modelos de distinta naturaleza bajo un marco experimental idéntico, aislando el efecto de la arquitectura del resto del pipeline.
+
+\subsection{Nodo de evaluación}
+El nodo de evaluación recibe exclusivamente las predicciones y las máscaras reales producidas por el nodo de modelo. Su responsabilidad es calcular las métricas de desempeño de forma agregada y consistente. Internamente, este nodo delega el cálculo a evaluadores individuales, cada uno asociado a una métrica específica.
+
+Desde el punto de vista metodológico, este desacoplamiento garantiza que las métricas no influyan en el proceso de entrenamiento ni en la generación de predicciones, evitando sesgos y permitiendo incorporar nuevas métricas sin modificar etapas previas del pipeline.
+
+\subsection{Orquestación y ejecución automática}
+La clase \textit{AutoML} actúa como el punto único de ejecución del experimento. Su método principal ejecuta secuencialmente los nodos de aumentación, modelo y evaluación, y retorna un conjunto final de métricas. Este diseño minimalista reduce la complejidad cognitiva del sistema y asegura que el flujo experimental sea explícito y reproducible.
+
+La automatización se logra mediante la ejecución repetida del pipeline con distintas combinaciones de nodos y configuraciones. De este modo, el proceso de selección de modelos e hiperparámetros se formaliza como una exploración sistemática del espacio de configuraciones, donde el criterio de selección se basa exclusivamente en las métricas producidas por el nodo evaluador.
+
+La construcción concreta de los nodos no se realiza directamente en los scripts experimentales, sino mediante funciones de configuración ubicadas en un módulo dedicado. Este enfoque separa claramente la definición del experimento de la lógica interna del framework, mejorando la legibilidad, reduciendo errores de configuración y facilitando la reproducibilidad de los resultados.
+
+Esta metodología basada en \textit{AutoML} establece una base sólida y extensible para todo el desarrollo posterior, dentro de un marco experimental unificado y controlado.
 
 \section{Descripción del Dataset}
 % - Origen de las imágenes SEM
