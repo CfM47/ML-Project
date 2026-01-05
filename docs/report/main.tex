@@ -396,24 +396,39 @@ Se implementaron métodos compuestos que permiten combinar varias aumentaciones 
 Estas estrategias permiten generar un dataset enriquecido sin comprometer la coherencia entre imágenes y máscaras.
 
 \subsection{Métricas de Evaluación}
+La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular y extensible, permitiendo calcular múltiples métricas a partir de una representación común de las predicciones y las máscaras de referencia. Todo el proceso es coordinado por un nodo evaluador central (\textit{EvaluatorNode}), cuyo objetivo es desacoplar la generación de predicciones del cálculo de métricas, facilitando comparaciones consistentes entre modelos y configuraciones experimentales.
 
-\subsubsection{Exactitud (Accuracy)}
-% - Definición a nivel de píxel
+Para cada imagen del conjunto de validación, el modelo de segmentación genera una máscara predicha, la cual se empareja con su máscara real correspondiente. Este proceso produce una colección de pares 
+$(\hat M,M)$, denominada \textit{MaskPairs}. En escenarios con validación cruzada k-fold, estas colecciones se agrupan por pliegue, resultando en una estructura del tipo lista de listas; en el caso simple de train/validation split, existe un único conjunto de pares.
 
-\subsubsection{Intersección sobre Unión (IoU)}
+Esta estructura es la entrada principal del \textit{EvaluatorNode}, que no calcula métricas directamente, sino que delega el cómputo a evaluadores especializados. Cada evaluador implementa una métrica específica y devuelve un único valor escalar, el cual es finalmente agregado en un diccionario de resultados que resume el desempeño del modelo.
+
+La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel. Para una clase dada, cada píxel de la máscara predicha se compara con la máscara real y se clasifica como verdadero positivo (TP), falso positivo (FP), falso negativo (FN) o verdadero negativo (TN). Los evaluadores acumulan estos conteos a lo largo de todas las imágenes antes de calcular la métrica final.
+
+\subsubsection{Intersección sobre Unión (IoU) y coeficiente Dice}
 % - Fórmula
 % - Variantes: por clase, promedio macro, promedio ponderado
+El \textit{Intersection over Union} (IoU) y el coeficiente \textit{Dice} son las métricas principales para cuantificar el solapamiento entre predicción y referencia.
+El IoU se define como la razón entre la intersección y la unión de ambas máscaras, penalizando tanto falsas detecciones como omisiones. El Dice, estrechamente relacionado, pondera el solapamiento relativo y puede interpretarse como una forma del F1-score a nivel de píxel, siendo ligeramente más sensible a errores de clasificación.
 
-\subsubsection{Coeficiente Dice (F1)}
-% - Fórmula
-% - Relación con IoU
-% - Variantes por clase
+Estas métricas se calculan de tres maneras complementarias:
+(i) por clase, evaluando individualmente cada etiqueta;
+(ii) promedio macro, donde se promedia el valor de cada clase sin ponderación, ofreciendo una visión balanceada incluso ante desbalances severos;
+(iii) promedio ponderado, donde cada clase contribuye según su frecuencia en el conjunto de datos, reflejando el desempeño global pero siendo sensible a clases dominantes como el fondo.
 
 \subsubsection{Precisión y Recall}
 % - Definiciones
 % - Interpretación en contexto de segmentación
+La precisión y el recall permiten un diagnóstico más fino de los errores del modelo. La precisión mide la confiabilidad de las predicciones positivas, mientras que el recall cuantifica la capacidad del modelo para detectar todos los píxeles relevantes de una clase. Al igual que en IoU y Dice, se reportan promedios macro para analizar el comportamiento medio del modelo en todas las clases, independientemente de su tamaño relativo.
 
-\subsection{Diseño del Framework AutoML}
+\subsubsection{Cohesión de la máscara}
+Además de las métricas clásicas basadas en coincidencia píxel a píxel, se incorpora una métrica estructural denominada Mask Cohesion. Esta se implementa mediante un autoencoder convolucional entrenado exclusivamente con máscaras reales del conjunto de datos. El autoencoder aprende una representación compacta de las estructuras válidas presentes en las segmentaciones de referencia.
+
+Durante la evaluación, las máscaras predichas se reconstruyen a través de este autoencoder y se calcula el error de reconstrucción. Un error bajo indica que la predicción presenta estructuras coherentes y plausibles, similares a las observadas en las máscaras reales, mientras que un error alto sugiere ruido, fragmentación o patrones no realistas. Esta métrica complementa a IoU y Dice al capturar aspectos cualitativos de la segmentación que no siempre se reflejan en métricas puramente basadas en solapamiento.
+
+Este conjunto de métricas proporciona una evaluación integral del desempeño, abarcando exactitud cuantitativa, balance entre clases y calidad estructural de las segmentaciones producidas.
+
+% \subsection{Diseño del Framework AutoML}
 % - Arquitectura de nodos (DataAugmentatorNode, ModelNode, EvaluatorNode)
 % - Validación cruzada K-fold
 % - Sistema de caché para experimentos
