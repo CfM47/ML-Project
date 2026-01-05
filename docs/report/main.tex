@@ -139,11 +139,11 @@ El núcleo metodológico se basa en un pipeline lineal de procesamiento, en el c
     \end{aligned}
 \end{equation}
 
-Cada etapa del pipeline encapsula una responsabilidad única y explícita, evitando dependencias implícitas y facilitando el análisis aislado del impacto de cada decisión metodológica. La coordinación de este flujo está a cargo de una clase orquestadora central, denominada \textit{AutoML}, cuya función es estrictamente organizativa.
+Cada etapa del pipeline encapsula una responsabilidad única y explícita, evitando dependencias implícitas y facilitando el análisis aislado del impacto de cada decisión metodológica. La coordinación de este flujo está a cargo de una clase orquestadora central, denominada \emph{AutoML}, cuya función es estrictamente organizativa.
 
 El diseño del framework se fundamenta en el uso extensivo de interfaces abstractas. Todas las etapas del pipeline implementan contratos formales definidos a nivel de interfaz, lo que permite desacoplar completamente la lógica de alto nivel de las implementaciones concretas. Este enfoque garantiza que diferentes estrategias —por ejemplo, distintos esquemas de validación o arquitecturas de red— puedan sustituirse sin alterar la estructura global del sistema.
 
-La metodología adopta el principio de composición: la clase \textit{AutoML} no implementa lógica de entrenamiento, aumentación ni evaluación, sino que recibe instancias de nodos que cumplen interfaces predefinidas y las ejecuta en el orden correcto. Esto resulta en un núcleo extremadamente estable y fácil de auditar desde el punto de vista metodológico.
+La metodología adopta el principio de composición: la clase \emph{AutoML} no implementa lógica de entrenamiento, aumentación ni evaluación, sino que recibe instancias de nodos que cumplen interfaces predefinidas y las ejecuta en el orden correcto. Esto resulta en un núcleo extremadamente estable y fácil de auditar desde el punto de vista metodológico.
 
 \subsection{Nodo de aumentación y partición de datos}
 El primer componente del pipeline es el nodo de aumentación de datos, responsable de transformar el dataset original y generar las particiones de entrenamiento y validación. Este nodo recibe el dataset completo y produce una lista de pares 
@@ -162,13 +162,13 @@ El nodo de evaluación recibe exclusivamente las predicciones y las máscaras re
 Desde el punto de vista metodológico, este desacoplamiento garantiza que las métricas no influyan en el proceso de entrenamiento ni en la generación de predicciones, evitando sesgos y permitiendo incorporar nuevas métricas sin modificar etapas previas del pipeline.
 
 \subsection{Orquestación y ejecución automática}
-La clase \textit{AutoML} actúa como el punto único de ejecución del experimento. Su método principal ejecuta secuencialmente los nodos de aumentación, modelo y evaluación, y retorna un conjunto final de métricas. Este diseño minimalista reduce la complejidad cognitiva del sistema y asegura que el flujo experimental sea explícito y reproducible.
+La clase \emph{AutoML} actúa como el punto único de ejecución del experimento. Su método principal ejecuta secuencialmente los nodos de aumentación, modelo y evaluación, y retorna un conjunto final de métricas. Este diseño minimalista reduce la complejidad cognitiva del sistema y asegura que el flujo experimental sea explícito y reproducible.
 
 La automatización se logra mediante la ejecución repetida del pipeline con distintas combinaciones de nodos y configuraciones. De este modo, el proceso de selección de modelos e hiperparámetros se formaliza como una exploración sistemática del espacio de configuraciones, donde el criterio de selección se basa exclusivamente en las métricas producidas por el nodo evaluador.
 
 La construcción concreta de los nodos no se realiza directamente en los scripts experimentales, sino mediante funciones de configuración ubicadas en un módulo dedicado. Este enfoque separa claramente la definición del experimento de la lógica interna del framework, mejorando la legibilidad, reduciendo errores de configuración y facilitando la reproducibilidad de los resultados.
 
-Esta metodología basada en \textit{AutoML} establece una base sólida y extensible para todo el desarrollo posterior, dentro de un marco experimental unificado y controlado.
+Esta metodología basada en \emph{AutoML} establece una base sólida y extensible para todo el desarrollo posterior, dentro de un marco experimental unificado y controlado.
 
 \section{Descripción del Dataset}
 % - Origen de las imágenes SEM
@@ -190,38 +190,61 @@ Este planteamiento unifica modelos de segmentación directa y estrategias guiada
 % - Mecanismo de atención
 % - Adaptación para segmentación semántica
 % - Hiperparámetros utilizados
-La segmentación se aborda mediante un modelo basado en Vision Transformers (ViT) adaptado a un esquema encoder–decoder, diseñado para producir mapas de segmentación densos a partir de imágenes de entrada en escala de grises.
 
-El modelo recibe como entrada imágenes bidimensionales de tamaño fijo, representadas como tensores con uno o más canales. En los casos en que la entrada no coincide con el número de canales esperado, se aplica una conversión a escala de grises para garantizar compatibilidad. La salida del modelo consiste en un tensor de segmentación multiclase, donde cada píxel es asignado a una de las clases definidas. Durante la inferencia, estas salidas se transforman en máscaras discretas mediante una operación de selección de la clase más probable por píxel.
+La estrategia de segmentación basada en \emph{Vision Transformer} (ViT) se diseñó siguiendo un enfoque modular que separa explícitamente la definición arquitectónica del modelo del proceso de entrenamiento y evaluación. Esta decisión metodológica permite desacoplar los aspectos conceptuales del modelo de los detalles operativos, facilitando su integración en el framework de \emph{AutoML} y asegurando comparabilidad con otras estrategias de segmentación.
 
-El proceso comienza con una etapa de patch embedding, en la cual la imagen se divide implícitamente en regiones no solapadas de tamaño uniforme. Cada región se proyecta a un espacio latente de dimensión fija, generando una secuencia de representaciones que conserva la información espacial global. A estas representaciones se les añaden embeddings posicionales aprendibles, lo que permite al modelo mantener la noción de localización relativa entre parches.
+\subsubsection{Arquitectura encoder--decoder}
 
-La secuencia resultante se procesa mediante un codificador Transformer compuesto por múltiples capas de autoatención multi-cabeza y bloques feed-forward. Esta etapa permite modelar dependencias de largo alcance y capturar relaciones contextuales globales, lo cual es especialmente relevante en imágenes con estructuras complejas y patrones no locales.
+El modelo adopta una arquitectura de tipo \emph{encoder--decoder}, donde el encoder se basa en un Transformer y el decoder en una red neuronal convolucional. Esta combinación permite explotar la capacidad del mecanismo de autoatención para capturar dependencias globales, mientras que el decoder convolucional reconstruye la información espacial necesaria para una segmentación densa a nivel de píxel.
 
-Tras el codificador, las representaciones latentes se reorganizan nuevamente en una estructura espacial bidimensional. A continuación, un decodificador convolucional progresivo realiza una serie de operaciones de refinamiento y reescalado espacial, incrementando gradualmente la resolución hasta alcanzar el tamaño original de la imagen. Esta etapa traduce la información global extraída por el Transformer en predicciones locales coherentes a nivel de píxel.
+El encoder transforma la imagen de entrada en una secuencia de representaciones latentes mediante un proceso de partición en parches no solapados. Cada parche es proyectado a un espacio de alta dimensionalidad, generando una secuencia de \emph{embeddings} que reemplaza la representación basada en píxeles. Dado que los Transformers carecen de noción explícita de orden espacial, se incorporan codificaciones posicionales aprendibles, las cuales preservan la información relativa a la localización de cada parche en la imagen original.
 
-El entrenamiento se lleva a cabo de extremo a extremo mediante una función de pérdida de entropía cruzada multiclase, optimizando directamente la correspondencia entre las predicciones del modelo y las máscaras de referencia. La evaluación produce pares de máscaras predichas y reales, lo que permite un análisis cualitativo y cuantitativo del desempeño del modelo en tareas de segmentación.
+Posteriormente, esta secuencia es procesada por múltiples capas de autoatención, donde cada parche puede intercambiar información con todos los demás. Este mecanismo permite construir representaciones con contexto global, capturando relaciones de largo alcance.
 
-En conjunto, esta arquitectura combina la capacidad de los Vision Transformers para modelar contexto global con la precisión espacial de decodificadores convolucionales, resultando adecuada para problemas de segmentación.
+\subsubsection{Decoder convolucional y reconstrucción espacial}
+
+La salida del encoder, expresada como una secuencia de vectores latentes, es reestructurada nuevamente en forma de mapa bidimensional de características. A partir de esta representación de baja resolución espacial, el decoder convolucional realiza una reconstrucción progresiva hasta alcanzar la resolución original de la imagen.
+
+Este proceso se lleva a cabo mediante una serie de etapas de refinamiento y reescalado, en las cuales se combinan convoluciones para la extracción local de características con operaciones de interpolación para el aumento gradual de la resolución. En la etapa final, una proyección lineal por píxel permite obtener, para cada clase, un mapa de activación que representa la pertenencia de cada píxel a las distintas regiones de interés.
+
+\subsubsection{Integración en el pipeline de AutoML}
+
+La arquitectura ViT descrita se integra en el pipeline de AutoML mediante un componente que encapsula tanto el proceso de entrenamiento como la generación de predicciones. Este componente actúa como intermediario entre el modelo de segmentación y el resto del framework, garantizando que el ViT pueda ser tratado de manera homogénea junto con otras arquitecturas.
+
+Durante el entrenamiento, se emplea un esquema supervisado estándar para segmentación multiclase, utilizando funciones de pérdida adecuadas para este tipo de problema y validación sobre datos no vistos para monitorear el desempeño. En la fase de inferencia, las salidas continuas del modelo son convertidas en máscaras discretas mediante una asignación por máxima activación, produciendo mapas de segmentación directamente comparables con las máscaras de referencia.
+
+Esta estrategia combina la capacidad de los Vision Transformers para modelar contexto global con la precisión espacial de decodificadores convolucionales, resultando adecuada para problemas de segmentación.
 
 \subsection{Swin Transformer}
-% - Arquitectura jerárquica
-% - Ventanas deslizantes (shifted windows)
-% - Ventajas sobre ViT estándar
-% - Hiperparámetros utilizados
-La estrategia de segmentación basada en Swin Transformers se apoya en una arquitectura jerárquica de atención local con ventanas desplazadas, adaptada para producir mapas de segmentación densos a partir de imágenes de microscopía electrónica.
 
-El modelo recibe como entrada imágenes bidimensionales de tamaño fijo, representadas como tensores en escala de grises. En casos donde la información de entrada presenta múltiples canales, se aplica una conversión previa para garantizar consistencia con la arquitectura. La salida del modelo es un mapa de segmentación multiclase con la misma resolución espacial que la imagen de entrada, en el que cada píxel es asignado a una de las clases consideradas.
+El segmentador basado en \emph{Swin Transformer} se desarrolló siguiendo el mismo principio aplicado al modelo ViT: una separación estricta entre la arquitectura del modelo y la lógica de entrenamiento y evaluación. Esta coherencia de diseño garantiza modularidad, facilita la comparación experimental y permite integrar el modelo de manera transparente dentro del framework de AutoML.
 
-El procesamiento se inicia mediante una etapa de patch embedding jerárquica, en la cual la imagen se descompone en parches de pequeño tamaño que son proyectados a un espacio latente inicial. A diferencia de los Vision Transformers clásicos, el modelo Swin organiza estas representaciones en una estructura piramidal de múltiples etapas, donde la resolución espacial se reduce progresivamente y la dimensión de las características aumenta. En cada etapa, la atención se calcula de forma local dentro de ventanas, alternando ventanas fijas y desplazadas, lo que permite capturar dependencias espaciales tanto locales como de mayor alcance con un costo computacional controlado.
+\subsubsection{Arquitectura encoder--decoder}
 
-Las características extraídas por el backbone Swin corresponden a una representación de baja resolución espacial pero alta riqueza semántica. Para su uso en segmentación densa, estas representaciones se reorganizan y se adaptan mediante una etapa intermedia de refinamiento y reescalado, con el objetivo de armonizar la resolución con la del decodificador.
+Al igual que en el caso del ViT, el modelo adopta una arquitectura de tipo \emph{encoder--decoder}. Sin embargo, el encoder se basa en el Swin Transformer, una evolución de los Transformers para visión computacional que introduce propiedades jerárquicas y de localidad, tradicionalmente asociadas a las redes convolucionales.
 
-Posteriormente, un decodificador convolucional progresivo reconstruye la resolución original de la imagen. Este decodificador realiza una serie de operaciones de convolución, normalización y reescalado espacial, transformando las representaciones latentes jerárquicas en predicciones a nivel de píxel. La última proyección produce un conjunto de mapas de probabilidad, uno por clase, que se convierten en máscaras discretas mediante una asignación por máxima probabilidad.
+El encoder genera representaciones jerárquicas a múltiples escalas espaciales. A partir de la imagen de entrada, el modelo construye progresivamente un conjunto de mapas de características con resoluciones decrecientes, lo que permite capturar información tanto local como global. Este enfoque multiescala resulta especialmente adecuado para tareas de segmentación, donde coexisten detalles finos y estructuras de mayor tamaño.
 
-El modelo se entrena de extremo a extremo utilizando una función de pérdida de entropía cruzada multiclase, optimizando directamente la coherencia entre las máscaras predichas y las anotaciones de referencia. Durante la evaluación, el modelo genera pares de máscaras predichas y reales, lo que permite analizar su desempeño tanto de forma cuantitativa como cualitativa.
+El mecanismo central del Swin Transformer es la autoatención restringida a ventanas locales, lo que reduce significativamente la complejidad computacional en comparación con la autoatención global. Para evitar la pérdida de información entre regiones disjuntas, estas ventanas se desplazan de manera alternada entre capas consecutivas, permitiendo que la información fluya entre distintas zonas de la imagen. De este modo, el modelo combina eficiencia computacional con una capacidad efectiva de modelar dependencias de largo alcance.
 
-Esta estrategia aprovecha la naturaleza jerárquica y la atención localizada del Swin Transformer para modelar de manera eficiente estructuras complejas a múltiples escalas, resultando especialmente adecuada para tareas de segmentación en imágenes con alta variabilidad textural y patrones multiescala.
+Adicionalmente, la arquitectura fue adaptada para operar sobre imágenes en escala de grises, lo que asegura compatibilidad con el tipo de datos empleado en este trabajo sin alterar los principios fundamentales del modelo.
+
+\subsubsection{Adaptación de resolución y decoder compartido}
+
+El encoder basado en Swin Transformer produce su representación final a una resolución espacial inferior a la utilizada por el decoder convolucional. Para resolver esta discrepancia, se introduce un módulo de adaptación intermedio que reescala las características extraídas por el encoder hasta la resolución esperada por el decoder.
+
+Una vez ajustada la resolución, las características son procesadas por el mismo decoder convolucional utilizado en el modelo basado en ViT. Este decoder realiza una reconstrucción progresiva de la segmentación mediante etapas sucesivas de refinamiento y aumento de resolución, culminando en un mapa de segmentación denso a nivel de píxel. El uso de un decoder compartido evita la duplicación de componentes, mejora la mantenibilidad del sistema y asegura que las diferencias observadas en los resultados se deban principalmente al encoder y no a variaciones en la fase de reconstrucción.
+
+\subsubsection{Entrenamiento, regularización y evaluación}
+
+La integración del modelo Swin en el pipeline de AutoML se realiza a través de un componente que encapsula el proceso completo de entrenamiento y evaluación, manteniendo la misma interfaz que otros segmentadores. Esto garantiza la interoperabilidad dentro del framework y permite su comparación directa con enfoques alternativos.
+
+Un aspecto distintivo de esta estrategia es la incorporación de un mecanismo de \emph{early stopping} durante el entrenamiento. Este mecanismo monitoriza el desempeño sobre el conjunto de validación y detiene el proceso de optimización cuando no se observan mejoras durante un número predefinido de iteraciones consecutivas. De este modo, se reduce el riesgo de sobreajuste y se selecciona automáticamente el estado del modelo con mejor capacidad de generalización.
+
+En la fase de inferencia, el modelo genera mapas de activación multiclase que son transformados en máscaras de segmentación discretas mediante una asignación por máxima respuesta. Estas máscaras se utilizan posteriormente en el módulo de evaluación, asegurando consistencia con el resto de modelos analizados.
+
+El segmentador basado en Swin Transformer combina eficiencia computacional, representación jerárquica multiescala y mecanismos de regularización explícitos, constituyendo una alternativa de alto nivel dentro del estado del arte para segmentación semántica en imágenes complejas.
+
 
 \subsection{Quadtree}
 La estrategia de segmentación basada en quadtree adopta un enfoque jerárquico y recursivo, en el cual la imagen se descompone progresivamente en regiones cuadradas de menor tamaño en función de la confianza de un clasificador subyacente. Este método no pertenece al estado del arte en segmentación, pero permite reutilizar modelos de clasificación preentrenados para abordar tareas de segmentación bajo restricciones computacionales.
@@ -439,19 +462,19 @@ Se implementaron métodos compuestos que permiten combinar varias aumentaciones 
 Estas estrategias permiten generar un dataset enriquecido sin comprometer la coherencia entre imágenes y máscaras.
 
 \subsection{Métricas de Evaluación}
-La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular y extensible, permitiendo calcular múltiples métricas a partir de una representación común de las predicciones y las máscaras de referencia. Todo el proceso es coordinado por un nodo evaluador central (\textit{EvaluatorNode}), cuyo objetivo es desacoplar la generación de predicciones del cálculo de métricas, facilitando comparaciones consistentes entre modelos y configuraciones experimentales.
+La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular y extensible, permitiendo calcular múltiples métricas a partir de una representación común de las predicciones y las máscaras de referencia. Todo el proceso es coordinado por un nodo evaluador central (\emph{EvaluatorNode}), cuyo objetivo es desacoplar la generación de predicciones del cálculo de métricas, facilitando comparaciones consistentes entre modelos y configuraciones experimentales.
 
 Para cada imagen del conjunto de validación, el modelo de segmentación genera una máscara predicha, la cual se empareja con su máscara real correspondiente. Este proceso produce una colección de pares 
-$(\hat M,M)$, denominada \textit{MaskPairs}. En escenarios con validación cruzada k-fold, estas colecciones se agrupan por pliegue, resultando en una estructura del tipo lista de listas; en el caso simple de train/validation split, existe un único conjunto de pares.
+$(\hat M,M)$, denominada \emph{MaskPairs}. En escenarios con validación cruzada k-fold, estas colecciones se agrupan por pliegue, resultando en una estructura del tipo lista de listas; en el caso simple de train/validation split, existe un único conjunto de pares.
 
-Esta estructura es la entrada principal del \textit{EvaluatorNode}, que no calcula métricas directamente, sino que delega el cómputo a evaluadores especializados. Cada evaluador implementa una métrica específica y devuelve un único valor escalar, el cual es finalmente agregado en un diccionario de resultados que resume el desempeño del modelo.
+Esta estructura es la entrada principal del \emph{EvaluatorNode}, que no calcula métricas directamente, sino que delega el cómputo a evaluadores especializados. Cada evaluador implementa una métrica específica y devuelve un único valor escalar, el cual es finalmente agregado en un diccionario de resultados que resume el desempeño del modelo.
 
 La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel. Para una clase dada, cada píxel de la máscara predicha se compara con la máscara real y se clasifica como verdadero positivo (TP), falso positivo (FP), falso negativo (FN) o verdadero negativo (TN). Los evaluadores acumulan estos conteos a lo largo de todas las imágenes antes de calcular la métrica final.
 
 \subsubsection{Intersección sobre Unión (IoU) y coeficiente Dice}
 % - Fórmula
 % - Variantes: por clase, promedio macro, promedio ponderado
-El \textit{Intersection over Union} (IoU) y el coeficiente \textit{Dice} son las métricas principales para cuantificar el solapamiento entre predicción y referencia.
+El \emph{Intersection over Union} (IoU) y el coeficiente \emph{Dice} son las métricas principales para cuantificar el solapamiento entre predicción y referencia.
 El IoU se define como la razón entre la intersección y la unión de ambas máscaras, penalizando tanto falsas detecciones como omisiones. El Dice, estrechamente relacionado, pondera el solapamiento relativo y puede interpretarse como una forma del F1-score a nivel de píxel, siendo ligeramente más sensible a errores de clasificación.
 
 Estas métricas se calculan de tres maneras complementarias:
