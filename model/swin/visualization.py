@@ -9,7 +9,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from auto_ml.interfaces import MaskPair, SegmentationDatasetInterface
-from model.swin.metrics import PercentageMetrics
+from model.swin.metrics import PercentageMetrics, TrainingHistory
 
 # Default colors for 3-class segmentation (RGB, 0-1 range)
 DEFAULT_MASK_COLORS: List[Tuple[float, float, float]] = [
@@ -69,6 +69,39 @@ def _plot_mask(
 
     ax.imshow(blended)
     ax.axis("off")
+
+
+def plot_training_loss_curves(
+    history: TrainingHistory,
+    output_path: Path | None = None,
+) -> Figure:
+    """
+    Plot training and validation loss curves for a single training run.
+
+    Args:
+        history: Validated TrainingHistory dataclass.
+        output_path: Optional path to save the figure.
+
+    Returns:
+        Matplotlib Figure.
+
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    ax.plot(history.epochs, history.train_losses, color="red", label="Training")
+    ax.plot(history.epochs, history.val_losses, color="blue", label="Validation")
+
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title("Training Loss Curves")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    if output_path:
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+        print(f"Saved training loss curves to {output_path}")
+
+    return fig
 
 
 def plot_results(
