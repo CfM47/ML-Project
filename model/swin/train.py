@@ -18,10 +18,11 @@ from auto_ml.interfaces import MaskPair, SegmentationDatasetInterface
 from model.swin.config import SwinTrainingConfig
 from model.swin.data import create_augmentator, create_kfold_splits, subsample_dataset
 from model.swin.evaluation import create_evaluator, evaluate_model
-from model.swin.metrics import FoldMetrics, PercentageMetrics
+from model.swin.metrics import FoldMetrics, PercentageMetrics, TrainingHistory
 from model.swin.visualization import (
     plot_progression_grid,
     plot_results,
+    plot_training_loss_curves,
     visualize_predictions,
 )
 
@@ -123,7 +124,7 @@ def run_final_training(
     test_unlabeled_dir: str | Path,
     test_labeled_dir: str | Path,
     config: SwinTrainingConfig | None = None,
-) -> Tuple[SwinModel, Dict[str, float], List[MaskPair], Figure]:
+) -> Tuple[SwinModel, Dict[str, float], List[MaskPair], Figure, Figure | None]:
     """
     Train final model on 100% data and evaluate on test set.
 
@@ -137,7 +138,8 @@ def run_final_training(
         config: Training configuration. Uses defaults if None.
 
     Returns:
-        Tuple of (trained_model, test_metrics, test_mask_pairs, predictions Figure).
+        Tuple of (trained_model, test_metrics, test_mask_pairs, predictions Figure,
+        loss_curves Figure or None if history validation failed).
 
     """
     if config is None:
@@ -162,7 +164,7 @@ def run_final_training(
     print(f"Loaded {len(test_dataset)} test samples")
 
     # Train final model
-    model = _train_final_model(train_dataset, config)
+    model, training_history = _train_final_model(train_dataset, config)
 
     # Evaluate on test set
     test_metrics, test_mask_pairs = _evaluate_on_test(model, test_dataset)
@@ -173,14 +175,23 @@ def run_final_training(
 
     # Visualize predictions
     viz_path = config.output_dir / "test_predictions.png"
-    fig = visualize_predictions(
+    predictions_fig = visualize_predictions(
         test_dataset,
         test_mask_pairs,
         num_samples=config.num_test_visualizations,
         output_path=viz_path,
     )
 
-    return model, test_metrics, test_mask_pairs, fig
+    # Plot training loss curves if history is valid
+    loss_curves_fig: Figure | None = None
+    if training_history is not None:
+        loss_curves_path = config.output_dir / "training_loss_curves.png"
+        loss_curves_fig = plot_training_loss_curves(
+            training_history,
+            output_path=loss_curves_path,
+        )
+
+    return model, test_metrics, test_mask_pairs, predictions_fig, loss_curves_fig
 
 
 # ==============================================================================
@@ -310,7 +321,7 @@ def _train_fold(
 def _train_final_model(
     train_dataset: SegmentationDatasetInterface,
     config: SwinTrainingConfig,
-) -> SwinModel:
+) -> Tuple[SwinModel, TrainingHistory | None]:
     """Train final model with 80/20 train/val split and augmentation."""
     print("\n" + "=" * 60)
     print("Training final model")
@@ -331,9 +342,12 @@ def _train_final_model(
 
     # Create and train model with validation for early stopping
     model = _create_swin_model(config)
-    model.train(aug_train, validation_dataset=val_split)
+    train_result = model.train(aug_train, validation_dataset=val_split)
 
-    return model
+    # Create validated training history
+    training_history = TrainingHistory.from_history_dicts(train_result.history)
+
+    return model, training_history
 
 
 def _evaluate_on_test(

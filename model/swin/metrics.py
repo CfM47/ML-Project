@@ -7,6 +7,61 @@ import numpy as np
 
 
 @dataclass
+class TrainingHistory:
+    """Store validated training history with per-epoch losses."""
+
+    epochs: List[int]
+    train_losses: List[float]
+    val_losses: List[float]
+
+    @classmethod
+    def from_history_dicts(
+        cls,
+        history: List[Dict[str, float]],
+    ) -> "TrainingHistory | None":
+        """
+        Create TrainingHistory from list of epoch metric dicts.
+
+        Return None and log error if history is invalid (missing train_loss
+        or val_loss for any epoch).
+
+        Args:
+            history: List of dicts with 'epoch', 'train_loss', and 'val_loss' keys.
+
+        Returns:
+            TrainingHistory instance, or None if validation fails.
+
+        """
+        if not history:
+            print("Error: Training history is empty")
+            return None
+
+        epochs = []
+        train_losses = []
+        val_losses = []
+
+        for i, epoch_dict in enumerate(history):
+            epoch_num = int(epoch_dict.get("epoch", i + 1))
+
+            if "train_loss" not in epoch_dict:
+                print(f"Error: Missing train_loss for epoch {epoch_num}")
+                return None
+            if "val_loss" not in epoch_dict:
+                print(f"Error: Missing val_loss for epoch {epoch_num}")
+                return None
+
+            epochs.append(epoch_num)
+            train_losses.append(float(epoch_dict["train_loss"]))
+            val_losses.append(float(epoch_dict["val_loss"]))
+
+        return cls(
+            epochs=epochs,
+            train_losses=train_losses,
+            val_losses=val_losses,
+        )
+
+
+@dataclass
 class FoldMetrics:
     """Store metrics for a single fold."""
 
