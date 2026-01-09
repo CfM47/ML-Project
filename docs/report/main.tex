@@ -732,6 +732,29 @@ La Figura~\ref{fig:loss_vs_data} ilustra esta relación. Se observa una clara te
     \label{fig:loss_vs_data}
 \end{figure}
 
+Para visualizar el impacto cualitativo de este incremento en los datos, la Figura~\ref{fig:progression} muestra la evolución de las segmentaciones en una misma muestra de validación conforme se entrena el modelo con porcentajes crecientes del dataset (e.g., 20\%, 50\%, 100\%). Se aprecia cómo la definición de las zonas y la reducción de ruidos espurios mejora notablemente con mayor volumen de ejemplos.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{progression.png}
+    \caption{Evolución cualitativa de la segmentación al aumentar el porcentaje de datos de entrenamiento. Se observa una mejora progresiva en la coherencia de las regiones detectadas.}
+    \label{fig:progression}
+\end{figure}
+
+
+\subsection{Evaluación Cualitativa en Test}
+
+Para complementar los resultados cuantitativos, se realizó una evaluación visual del modelo final Swin Transformer (entrenado con el dataset completo aumentado) sobre un conjunto de prueba independiente. La Figura~\ref{fig:test_predictions} presenta una comparativa cualitativa de las segmentaciones generadas.
+
+En la visualización se muestran tres columnas: a la izquierda, la imagen SEM original; en el centro, la máscara de referencia manual (Ground Truth); y a la derecha, la segmentación predicha por el modelo. Se observa una alta correspondencia estructural entre las predicciones y las anotaciones humanas, destacando la capacidad del modelo para delinear correctamente las fronteras entre zonas frágiles y dúctiles, incluso en áreas de transición compleja. Estos resultados cualitativos respaldan las métricas obtenidas y confirman la aplicabilidad práctica de la solución propuesta.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth, height=0.85\textheight, keepaspectratio]{test_predictions.png}
+    \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo Swin Transformer final.}
+    \label{fig:test_predictions}
+\end{figure}
+
 \section{Conclusiones}
 % - Resumen de hallazgos principales
 % - Mejor estrategia de segmentación
