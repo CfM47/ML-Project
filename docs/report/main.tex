@@ -164,6 +164,7 @@ Para cuantificar el desempeño en segmentación, las fuentes destacan cuatro mé
     \item AP (Average Precision): Utilizada comúnmente en segmentación de instancias para evaluar la detección de objetos individuales.
 \end{itemize}
 
+
 \section{Metodología Experimental y Pipeline de Experimentación}
 La complejidad inherente a la segmentación de fracturas, sumada a la escasez de imágenes anotadas, exige un rigor experimental superior al convencional. Para abordar esto, se diseñó e implementó un framework de experimentación automatizada (\textit{AutoML custom y simple}) que permite la evaluación sistemática y reproducible de hipótesis de modelado.
 Este enfoque trasciende la simple búsqueda de hiperparámetros; constituye una metodología para aislar variables y cuantificar el impacto real de cada componente (arquitectura vs. estrategia de datos) en el desempeño final.
@@ -192,6 +193,9 @@ La etapa final (\textit{Evaluator Node}) opera como un auditor independiente. Re
 Adicionalmente, el sistema implementa un mecanismo de persistencia granular que registra no solo las métricas finales, sino también los tiempos de cómputo y las configuraciones exactas. Esto habilita un análisis posterior profundo sobre el \textit{trade-off} entre costo computacional y precisión, fundamental para proponer soluciones viables en entornos de recursos limitados.
 
 En conclusión, esta metodología instrumentaliza el método científico: permite plantear hipótesis sobre arquitecturas y datos, y validarlas o refutarlas mediante evidencia empírica generada en un entorno controlado.
+
+
+
 \section{Descripción del dataset}
 % - División train/test
 % - Origen de las imágenes SEM
@@ -211,7 +215,7 @@ Con el objetivo de caracterizar la distribución espacial de las clases, se cons
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{heatmap.png}
+    \includegraphics{heatmap.png}
     \caption{Mapa de calor de la distribución espacial de las clases dúctil y frágil, obtenido a partir de la superposición de las máscaras de segmentación redimensionadas a $512 \times 512$ píxeles.}
     \label{fig:heatmap_ductil}
 \end{figure}
@@ -614,21 +618,21 @@ La Tabla~\ref{tab:results_identity} muestra los resultados obtenidos utilizando 
 \centering
 \caption{Resultados con aumentación identidad}
 \label{tab:results_identity}
-\begin{tabular}{lcc}
+\begin{tabular}{lcccc}
 \hline
-\textbf{Modelo} & \textbf{F1-score} & \textbf{Tiempo (s)} \\
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} & \textbf{Tiempo (s)} \\
 \hline
-ViT estándar & 0.598 & 1057.9 \\
-Swin estándar & \textbf{0.703} & \textbf{927.7} \\
-ViT grande & 0.541 & 2407.9 \\
-Swin grande & 0.556 & 2715.2 \\
-Quadtree + CNN & 0.490 & 6421.7 \\
-Quadtree + ViT & 0.250 & 34886.9 \\
-Sliding Window CNN (64/32) & 0.474 & 7742.4 \\
-Sliding Window CNN (128/64) & 0.476 & 7605.5 \\
-Sliding Window CNN (128/128) & 0.488 & 7568.2 \\
-Sliding Window CNN (256/128) & 0.459 & 7573.1 \\
-Sliding Window ViT (64/32) & 0.250 & 9141.4 \\
+ViT estándar & 0.5977 & 0.6798 & 0.7339 & 1057.8780 \\
+Swin estándar & \textbf{0.7033} & 0.7384 & 0.5625 & \textbf{927.6742} \\
+ViT grande & 0.5408 & 0.6646 & 0.0 & 2407.9015 \\
+Swin grande & 0.5558 & 0.6645 & 0.0532 & 2715.1977 \\
+Quadtree + CNN & 0.4896 & 0.5523 & 0.0 & 6421.7091 \\
+Quadtree + ViT & 0.2500 & 0.3353 & 0.0 & 34886.8623 \\
+Sliding Window CNN (64/32) & 0.4739 & 0.6384 & 0.8947 & 7742.3934 \\
+Sliding Window CNN (128/64) & 0.4762 & 0.5923 & 0.7146 & 7605.4753 \\
+Sliding Window CNN (128/128) & 0.4881 & 0.5800 & 0.3836 & 7568.2322 \\
+Sliding Window CNN (256/128) & 0.4588 & 0.5543 & 0.4795 & 7573.1301 \\
+Sliding Window ViT (64/32) & 0.2500 & 0.3353 & 0.0 & 9141.4042 \\
 \hline
 \end{tabular}
 \end{table}
@@ -643,14 +647,14 @@ La Tabla~\ref{tab:results_combined_2geo} resume los resultados al aplicar una es
 \centering
 \caption{Resultados con aumentación combinada (2G, 2F, 1SEM, $\times$2)}
 \label{tab:results_combined_2geo}
-\begin{tabular}{lcc}
+\begin{tabular}{lcccc}
 \hline
-\textbf{Modelo} & \textbf{F1-score} & \textbf{Tiempo (s)} \\
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} & \textbf{Tiempo (s)} \\
 \hline
-ViT estándar & 0.565 & 2997.8 \\
-Swin estándar & \textbf{0.750} & \textbf{2564.0} \\
-ViT grande & 0.399 & 6924.9 \\
-Swin grande & 0.727 & 7675.0 \\
+ViT estándar & 0.5645 & 0.6264 & 0.1368 & 2997.8260 \\
+Swin estándar & \textbf{0.7500} & 0.7771 & 0.4783 & \textbf{2564.0437} \\
+ViT grande & 0.3986 & 0.6646 & 0.0 & 6924.8986 \\
+Swin grande & 0.7269 & 0.7619 & 0.4766 & 7674.9682 \\
 \hline
 \end{tabular}
 \end{table}
@@ -665,14 +669,14 @@ Finalmente, la Tabla~\ref{tab:results_combined_3geo} presenta los resultados con
 \centering
 \caption{Resultados con aumentación combinada (3G, 1F, 1SEM, $\times$2)}
 \label{tab:results_combined_3geo}
-\begin{tabular}{lcc}
+\begin{tabular}{lcccc}
 \hline
-\textbf{Modelo} & \textbf{F1-score} & \textbf{Tiempo (s)} \\
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} & \textbf{Tiempo (s)} \\
 \hline
-ViT estándar & 0.574 & 3014.5 \\
-Swin estándar & \textbf{0.750} & \textbf{2575.2} \\
-ViT grande & 0.416 & 6930.9 \\
-Swin grande & 0.459 & 7697.5 \\
+ViT estándar & 0.5742 & 0.6568 & 0.5771 & 3014.4913 \\
+Swin estándar & \textbf{0.7495} & 0.7738 & 0.5409 & \textbf{2575.2458} \\
+ViT grande & 0.4164 & 0.6643 & 0.0 & 6930.9403 \\
+Swin grande & 0.4593 & 0.6853 & 0.0736 & 7697.5314 \\
 \hline
 \end{tabular}
 \end{table}
