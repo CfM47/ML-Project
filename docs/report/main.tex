@@ -164,33 +164,34 @@ Para cuantificar el desempeño en segmentación, las fuentes destacan cuatro mé
     \item AP (Average Precision): Utilizada comúnmente en segmentación de instancias para evaluar la detección de objetos individuales.
 \end{itemize}
 
-\section{Metodología Experimental y Pipeline AutoML}
-La resolución del problema de segmentación se abordó mediante un diseño experimental modular que garantiza la reproducibilidad y la comparabilidad entre distintas configuraciones. La metodología establece un flujo de trabajo claro para el procesamiento de datos, entrenamiento y evaluación, permitiendo aislar el impacto de cada componente en el desempeño final.
+\section{Metodología Experimental y Pipeline de Experimentación}
+La complejidad inherente a la segmentación de fracturas, sumada a la escasez de imágenes anotadas, exige un rigor experimental superior al convencional. Para abordar esto, se diseñó e implementó un framework de experimentación automatizada (\textit{AutoML custom y simple}) que permite la evaluación sistemática y reproducible de hipótesis de modelado.
+Este enfoque trasciende la simple búsqueda de hiperparámetros; constituye una metodología para aislar variables y cuantificar el impacto real de cada componente (arquitectura vs. estrategia de datos) en el desempeño final.
 
-\subsection{Diseño del Pipeline de Selección}
-
-El núcleo metodológico se basa en un pipeline lineal de procesamiento, donde los datos fluyen secuencialmente a través de etapas bien definidas:
+\subsection{Arquitectura del Flujo Experimental}
+El proceso de investigación se estructuró mediante un pipeline lineal estandarizado, que garantiza que todas las estrategias compitan en igualdad de condiciones. El flujo se define formalmente como:
 
 \begin{equation}
-    \begin{aligned}
-        \text{Imágenes de Fractura} & \rightarrow \text{Preprocesamiento y Aumentación} \rightarrow \text{Segmentación Semántica} \\ 
-        &\rightarrow \text{Mapas de Zonas Dúctil/Frágil} \rightarrow \text{Evaluación de Métricas}
-    \end{aligned}
+    \mathcal{P} : \text{Espacio de Datos} \xrightarrow{\phi} \text{Entrenamiento} \xrightarrow{\psi} \text{Evaluación}
 \end{equation}
 
-Esta estructura asegura que todas las estrategias de segmentación sean evaluadas bajo las mismas condiciones.
+Donde el orquestador del sistema gestiona la ejecución iterativa de este pipeline, permutando las configuraciones de datos ($\phi$) y modelos ($\psi$) para cubrir exhaustivamente el espacio de búsqueda definido.
 
-\subsection{Estrategia de Aumentación y Validación}
-La primera etapa define el protocolo de datos. Se implementa una estrategia de partición rigurosa (validación cruzada o split fijo) y se aplican técnicas de aumentación de datos de manera controlada. Esto garantiza que todos los modelos vean exactamente las mismas distribuciones de datos durante el entrenamiento y sean evaluados sobre el mismo conjunto de validación, evitando fugas de información.
+\subsection{Estrategias de Aumentación y Control de Variabilidad}
+El primer componente del sistema, el \textit{Data Node}, tiene la responsabilidad crítica de definir el régimen de datos. Su función no es solo aplicar transformaciones, sino asegurar la integridad del protocolo experimental.
+El sistema genera particiones de datos (e.g., k-fold cross-validation) y aplica políticas de aumentación sintética de manera determinista. Esto permite desacoplar los efectos de la variabilidad del muestreo de las mejoras algorítmicas, permitiendo responder preguntas como: \textit{¿Es la mejora en precisión atribuible al modelo Swin Transformer o a la introducción de mas ejemplos entrenantes mediante data augmentation en el entrenamiento?}
 
-\subsection{Protocolo de Entrenamiento}
-Cada arquitectura de segmentación (ViT, Swin, Quadtree) se entrena siguiendo un protocolo estandarizado. Se encapsula la lógica de entrenamiento para mantener interfaces consistentes, permitiendo comparar modelos de naturaleza muy distinta (e.g., redes neuronales profundas vs. algoritmos recursivos) bajo un marco común.
+\subsection{Homogeneización del Entrenamiento de Modelos}
+Para garantizar la comparabilidad entre arquitecturas dispares (e.g., Transformers vs. Algoritmos de Partición Recursiva) Todos los modelos deben implementar métodos estandarizados \texttt{train()} y \texttt{evaluate()}, lo que desacopla la lógica interna del algoritmo del flujo experimental.
 
-\subsection{Evaluación Sistemática}
-La etapa final consiste en el cálculo de métricas de desempeño sobre las predicciones. Este proceso es independiente del entrenamiento y utiliza un conjunto de métricas estándar para cuantificar la calidad de la segmentación. La separación entre inferencia y evaluación asegura que los resultados sean imparciales y directamente comparables.
+El componente \texttt{ModelNode} orquesta la ejecución siguiendo un principio de aislamiento estricto. Para cada partición del dataset ($k$-fold). Esto asegura una inicialización "tabula rasa" para cada experimento, eliminando cualquier riesgo de fuga de pesos o sesgo residual de entrenamientos previos. Así, la evaluación refleja puramente la capacidad del modelo para aprender de los datos suministrados en esa iteración específica.
 
-Este diseño experimental sistemático permite explorar el espacio de configuraciones (arquitecturas, hiperparámetros, estrategias de aumentación) de manera ordenada, fundamentando la selección del mejor modelo en evidencia empírica robusta.
 
+\subsection{Evaluación Imparcial y Persistencia}
+La etapa final (\textit{Evaluator Node}) opera como un auditor independiente. Recibe las predicciones generadas y calcula métricas de desempeño sin acceso a la lógica que las produjo, asegurando una "evaluación ciega".
+Adicionalmente, el sistema implementa un mecanismo de persistencia granular que registra no solo las métricas finales, sino también los tiempos de cómputo y las configuraciones exactas. Esto habilita un análisis posterior profundo sobre el \textit{trade-off} entre costo computacional y precisión, fundamental para proponer soluciones viables en entornos de recursos limitados.
+
+En conclusión, esta metodología instrumentaliza el método científico: permite plantear hipótesis sobre arquitecturas y datos, y validarlas o refutarlas mediante evidencia empírica generada en un entorno controlado.
 \section{Descripción del dataset}
 % - División train/test
 % - Origen de las imágenes SEM
