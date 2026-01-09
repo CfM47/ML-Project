@@ -1,4 +1,4 @@
-\documentclass[journal]{IEEEtran}
+\documentclass[onecolumn, 12pt , journal]{IEEEtran}
 
 \ifCLASSINFOpdf
 \usepackage[pdftex]{graphicx}
@@ -55,8 +55,8 @@
 
 % *** PDF, URL AND HYPERLINK PACKAGES ***
 \usepackage{url}
-
 \usepackage{float}
+
 \usepackage{booktabs}
 
 % correct bad hyphenation here
@@ -139,6 +139,30 @@ Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de mo
 % clasificacion
 % data augmentation
 % evaluation
+
+\section{Estado del Arte}
+
+\subsection{Modelos de Segmentación}
+La segmentación de imágenes ha estado dominada históricamente por las Redes Neuronales Convolucionales (CNN) \cite{sakib2019overview}. El modelo \emph{U-Net} es el estándar para arquitecturas de codificador-decodificador con conexiones de salto, permitiendo recuperar detalles espaciales finos \cite{ronneberger2015unet, cao2021swinunet}. En el ámbito de la microscopía electrónica (SEM), modelos como \emph{Mask R-CNN} se utilizan para la segmentación de instancias, permitiendo delimitar partículas individuales incluso en configuraciones de aglomerados \cite{monchot2021titanium, liu2021swin}.
+
+Recientemente, el \emph{Vision Transformer (ViT)} ha demostrado que es posible prescindir de las convoluciones al tratar parches de imagen como secuencias, capturando dependencias globales que las CNN suelen omitir \cite{dosovitskiy2021vit, cao2021swinunet}. No obstante, el ViT presenta una complejidad computacional cuadrática respecto al tamaño de la imagen, lo que dificulta su uso en tareas de predicción densa \cite{liu2021swin}. Para solucionar esto, el \emph{Swin Transformer} introduce mapas de características jerárquicos y un esquema de atención en ventanas desplazadas (\textit{shifted windows}), logrando una complejidad lineal \cite{liu2021swin}. Basado en esto, el modelo \emph{Swin-Unet} propone una arquitectura puramente basada en Transformers con estructura en forma de U para segmentación precisa, sustituyendo las operaciones de convolución por bloques de Swin Transformer \cite{cao2021swinunet}.
+
+\subsection{Clasificación de Imágenes}
+La clasificación de imágenes es fundamental cuando se emplean estrategias de segmentación mediante \textit{quadtrees} o ventanas deslizantes (\textit{sliding windows}). Modelos de CNN como \emph{ResNet} han sido la opción predeterminada debido a sus conexiones residuales que facilitan el entrenamiento profundo \cite{he2016resnet, sakib2019overview}. En microscopía electrónica, se han implementado bloques de \emph{EfficientNetB7} para clasificar morfologías de parches con alta precisión \cite{classification_report}. 
+
+Aunque los mecanismos de atención temprana aplicados mediante \textit{sliding windows} presentaban una alta latencia por el acceso costoso a memoria, el enfoque de ventanas locales de \emph{Swin Transformer} optimiza este proceso, permitiendo conexiones entre parches vecinos mediante el desplazamiento de ventanas en capas consecutivas \cite{liu2021swin}.
+
+\subsection{Aumentación de Datos en Imágenes SEM}
+Debido a la escasez de datos etiquetados en SEM, la aumentación es crítica. Las técnicas estándar incluyen transformaciones geométricas como \emph{flipping (volteo), rotaciones de 90º y aleatorias, traslación y escalado} \cite{monchot2021titanium, gaox2024cyclegan}. El estado del arte actual también incluye métodos generativos avanzados, como el uso de \emph{StyleGAN2 con ADA} (Aumentación Adaptativa del Discriminador) para generar microestructuras realistas a partir de conjuntos de datos limitados \cite{lambard2023stylegan}. Asimismo, se han empleado modelos \emph{CycleGAN} para mejorar la calidad de imagen y eliminar el desenfoque en muestras de baja conductividad \cite{gaox2024cyclegan}.
+
+\subsection{Métricas de Evaluación}
+Para cuantificar el desempeño en segmentación, las fuentes destacan cuatro métricas principales \cite{classification_report, cao2021swinunet}:
+\begin{itemize}
+    \item mIoU (Mean Intersection over Union): Mide el solapamiento entre la predicción y el ground truth.
+    \item Dice Coefficient (DSC): Equivalente al F1-Score en segmentación binaria, evalúa la similitud entre conjuntos.
+    \item HD95 (Hausdorff Distance): Mide la distancia máxima entre los bordes de la predicción y la máscara real, indicando precisión en el contorno.
+    \item AP (Average Precision): Utilizada comúnmente en segmentación de instancias para evaluar la detección de objetos individuales.
+\end{itemize}
 
 \section{Metodología basada en AutoML}
 La resolución del problema de segmentación se abordó mediante un enfoque de AutoML diseñado específicamente para garantizar modularidad, reproducibilidad y comparabilidad sistemática entre distintas configuraciones experimentales. La metodología no se limita a la automatización del entrenamiento, sino que establece una arquitectura formal que define claramente cada etapa del flujo de datos y permite intercambiar componentes de manera controlada.
@@ -678,6 +702,13 @@ En este escenario, el Swin estándar mantiene un desempeño estable y elevado, m
 En conjunto, los resultados indican que los modelos Swin Transformer de complejidad moderada ofrecen el mejor equilibrio entre capacidad de representación, robustez frente a aumentación y eficiencia computacional dentro del contexto evaluado.
 
 
+
+\subsection{Análisis de Curvas de Aprendizaje}
+
+Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
+
+
+
 \subsection{Análisis de Curvas de Aprendizaje}
 
 Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
@@ -700,9 +731,9 @@ Se observa un comportamiento interesante en los modelos grandes. El Swin Large (
 Un fenómeno particular se observó en el escenario de aumentación combinada \texttt{Combined\_2Geo\_2Photo\_1SEM\_x2}, comparando el Swin Standard y el Swin Large. La Figura~\ref{fig:overfitting_analysis} ilustra las curvas de \emph{Training Loss} vs. \emph{Validation Loss} para ambos casos.
 
 \begin{itemize}
-    \item \textbf{Swin Standard (Fig.~\ref{fig:swin_std_tv}):} Este modelo muestra un comportamiento clásico de \emph{overfitting} a partir de cierta etapa. El \emph{Training Loss} (línea azul) disminuye drásticamente, convergiendo casi a cero, mientras que el \emph{Validation Loss} (línea naranja) se estabiliza y comienza a divergir ligeramente o estancarse. Esto indica que el modelo, con su capacidad moderada, es capaz de memorizar eficazmente el conjunto de entrenamiento aumentado, pero esta memorización deja de traducirse en mejoras de generalización.
+    \item \textbf{Swin Standard (Fig.~\ref{fig:swin_std_tv}):} Este modelo muestra un comportamiento clásico de \emph{overfitting} a partir de cierta etapa. El \emph{Training Loss} (línea azul) disminuye drásticamente, convergiendo cada vez mas a cero, mientras que el \emph{Validation Loss} (línea naranja) se estabiliza y comienza a divergir ligeramente o estancarse. Esto indica que el modelo, con su capacidad moderada, es capaz de memorizar eficazmente el conjunto de entrenamiento aumentado, pero esta memorización deja de traducirse en mejoras de generalización.
     
-    \item \textbf{Swin Large (Fig.~\ref{fig:swin_large_tv}):} En contraste, el modelo grande muestra una dinámica diferente. Su \emph{Training Loss} no disminuye tan abruptamente como en el modelo estándar. Esto es contraintuitivo pero puede explicarse por la dificultad de optimizar una superficie de error mucho más compleja con un dataset limitado. El modelo grande parece "resistirse" más a la memorización rápida, manteniendo una brecha (\emph{gap}) más constante entre entrenamiento y validación. Esto sugiere que, paradójicamente, el modelo más grande podría beneficiarse más de un entrenamiento más prolongado o de un volumen de datos aún mayor para desbloquear su potencial, mientras que el modelo estándar alcanza su techo de rendimiento (y comienza a sobreajustarse) más temprano.
+    \item \textbf{Swin Large (Fig.~\ref{fig:swin_large_tv}):} En contraste, el modelo grande muestra una dinámica diferente. Su \emph{Training Loss} no disminuye tan abruptamente como en el modelo estándar. Esto sugiere que el modelo más grande podría beneficiarse más de un entrenamiento más prolongado y de un volumen de datos aún mayor para desbloquear su potencial, mientras que el modelo estándar alcanza su techo de rendimiento (y comienza a sobreajustarse) más temprano.
 \end{itemize}
 
 \begin{figure}[H]
@@ -718,7 +749,6 @@ Un fenómeno particular se observó en el escenario de aumentación combinada \t
     \label{fig:overfitting_analysis}
 \end{figure}
 
-
 \subsection{Análisis de Escalabilidad de Datos}
 
 Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo, analizando la evolución de la pérdida (loss) mínima alcanzada en validación en función del porcentaje de datos utilizados para el entrenamiento.
@@ -732,9 +762,9 @@ La Figura~\ref{fig:loss_vs_data} ilustra esta relación. Se observa una clara te
     \label{fig:loss_vs_data}
 \end{figure}
 
-Para visualizar el impacto cualitativo de este incremento en los datos, la Figura~\ref{fig:progression} muestra la evolución de las segmentaciones en una misma muestra de validación conforme se entrena el modelo con porcentajes crecientes del dataset (e.g., 20\%, 50\%, 100\%). Se aprecia cómo la definición de las zonas y la reducción de ruidos espurios mejora notablemente con mayor volumen de ejemplos.
+Para visualizar el impacto cualitativo de este incremento en los datos, la Figura~\ref{fig:progression} muestra la evolución de las segmentaciones en una misma muestra de validación conforme se entrena el modelo con porcentajes crecientes del dataset (e.g., 20\%, 50\%, 80\%). Se aprecia cómo la definición de las zonas y la reducción de ruidos espurios mejora notablemente con mayor volumen de ejemplos.
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.9\linewidth]{progression.png}
     \caption{Evolución cualitativa de la segmentación al aumentar el porcentaje de datos de entrenamiento. Se observa una mejora progresiva en la coherencia de las regiones detectadas.}
@@ -750,7 +780,7 @@ En la visualización se muestran tres columnas: a la izquierda, la imagen SEM or
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\linewidth, height=0.85\textheight, keepaspectratio]{test_predictions.png}
+    \includegraphics[width=0.9\linewidth, height=0.95\textheight, keepaspectratio]{test_predictions.png}
     \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo Swin Transformer final.}
     \label{fig:test_predictions}
 \end{figure}
