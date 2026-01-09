@@ -213,7 +213,7 @@ Las imágenes originales presentan tamaños variables, lo cual motivó la adopci
 
 Con el objetivo de caracterizar la distribución espacial de las clases, se construyó el mapa de calor de la Figura~\ref{fig:heatmap_ductil} agregando las máscaras redimensionadas. Dado que las clases son excluyentes, el mapa de calor representa únicamente la frecuencia de la clase dúctil. Este análisis permitió identificar regiones con mayor recurrencia de comportamiento dúctil, así como zonas donde la presencia de material frágil es más probable, aportando una visión global de la estructura espacial del dataset.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics{heatmap.png}
     \caption{Mapa de calor de la distribución espacial de las clases dúctil y frágil, obtenido a partir de la superposición de las máscaras de segmentación redimensionadas a $512 \times 512$ píxeles.}
@@ -329,6 +329,30 @@ Durante la fase de evaluación, el algoritmo se aplica de manera independiente a
 
 Las máscaras predichas se comparan posteriormente con las máscaras de referencia mediante las métricas definidas en el framework de evaluación, lo que permite analizar cuantitativamente el desempeño del método y contrastarlo con los enfoques basados en redes neuronales profundas.
 
+\subsection{Segmentación basada en ventanas deslizantes}
+
+El modelo de segmentación por \textit{Sliding Window} implementa una estrategia que divide la imagen de entrada en múltiples regiones más pequeñas, sobre las cuales se aplica un clasificador de imágenes previamente entrenado. Este enfoque permite realizar segmentación a nivel de píxel utilizando clasificadores más simples, sin necesidad de un modelo profundo para toda la imagen.
+
+\subsubsection{Estrategia general}
+
+La idea central consiste en deslizar una ventana rectangular de tamaño fijo sobre la imagen de entrada de $512 \times 512$ píxeles. En cada posición de la ventana, el clasificador determina la clase más probable de esa región. Las ventanas se superponen parcialmente, controladas por el parámetro de desplazamiento (\textit{stride}). Cada píxel puede ser evaluado varias veces por distintas ventanas superpuestas, y la clase final de cada píxel se determina agregando los resultados de todas las ventanas que lo cubren.
+
+\subsubsection{Parámetros principales}
+
+El comportamiento del modelo depende de dos parámetros fundamentales:
+
+\begin{itemize}
+  \item Tamaño de ventana (\textit{window\_size}): Define la altura y el ancho de la ventana deslizante en píxeles. Por ejemplo, un valor de 64 genera ventanas de 64x64 píxeles.
+  \item Desplazamiento (\textit{stride}): Controla cuántos píxeles se mueve la ventana en cada paso, tanto horizontal como verticalmente. Un desplazamiento menor implica mayor solapamiento entre ventanas, lo que aumenta el número de evaluaciones por píxel y puede producir segmentaciones más suaves, aunque con un mayor costo computacional. Un desplazamiento igual al tamaño de la ventana elimina la superposición.
+\end{itemize}
+
+\subsubsection{Proceso de segmentación}
+
+Para segmentar una imagen, se construye primero un mapa de votos tridimensional que acumula las predicciones del clasificador en cada ventana. Posteriormente, para cada píxel, se determina la clase final seleccionando aquella que haya recibido la mayor cantidad de votos o la mayor puntuación ponderada por la confianza del clasificador, dependiendo del método de agregación elegido. El resultado es una máscara de segmentación de la misma resolución que la imagen original.
+
+\subsubsection{Evaluación}
+
+El modelo se evalúa iterando sobre todas las imágenes del conjunto de datos de segmentación, generando máscaras predichas mediante el proceso descrito y comparándolas con las máscaras reales. Se calculan métricas estándar como precisión por píxel, IoU y F1-score, proporcionando una evaluación detallada del rendimiento del modelo.
 
 \section{Modelos de clasificación para segmentación}
 En esta sección se describen los modelos de clasificación empleados como componentes fundamentales de las estrategias de segmentación guiada basadas en particionado espacial. A diferencia de los enfoques de segmentación directa, estos métodos delegan la toma de decisiones semánticas a clasificadores entrenados para discriminar entre zonas frágiles y dúctiles, cuya salida se utiliza posteriormente para construir máscaras de segmentación a distintas escalas.
@@ -574,7 +598,7 @@ La precisión y el recall permiten un diagnóstico más fino de los errores del 
 \subsubsection{Cohesión de la máscara}
 Además de las métricas clásicas basadas en coincidencia píxel a píxel, se incorpora una métrica estructural denominada Mask Cohesion. Esta se implementa mediante un autoencoder convolucional entrenado exclusivamente con máscaras reales del conjunto de datos. El autoencoder aprende una representación compacta de las estructuras válidas presentes en las segmentaciones de referencia.
 
-Durante la evaluación, las máscaras predichas se reconstruyen a través de este autoencoder y se calcula el error de reconstrucción. Un error bajo indica que la predicción presenta estructuras coherentes y plausibles, similares a las observadas en las máscaras reales, mientras que un error alto sugiere ruido, fragmentación o patrones no realistas. Esta métrica complementa a IoU y Dice al capturar aspectos cualitativos de la segmentación que no siempre se reflejan en métricas puramente basadas en solapamiento.
+Durante la evaluación, se utilizan las representaciones del espacio latente generadas por el autoencoder en lugar de la reconstrucción directa. Se entrena un clasificador One-Class SVM sobre los embeddings de las máscaras reales para aprender la distribución de estructuras topológicamente válidas. La métrica reportada corresponde a la proporción de máscaras predichas que son identificadas como ``inliers'' por este modelo. Esto permite cuantificar cuántas predicciones mantienen una coherencia estructural indistinguible de las máscaras de referencia, penalizando aquellas con artefactos o formas anómalas. Esta métrica complementa a IoU y Dice al evaluar la calidad global de la forma más allá de la coincidencia píxel a píxel.
 
 Este conjunto de métricas proporciona una evaluación integral del desempeño, abarcando exactitud cuantitativa, balance entre clases y calidad estructural de las segmentaciones producidas.
 
@@ -699,7 +723,7 @@ Para complementar los resultados cuantitativos, se analizó el comportamiento de
 
 \subsubsection{Comparativa de Validación por Aumentación}
 
-La Figura~\ref{fig:val_loss_combined} muestra la evolución del \emph{Validation Loss} para los distintos modelos evaluados utilizando la estrategia de aumentación combinada.
+La Figura~\ref{fig:val_loss_combined} muestra la evolución del \emph{Validation Loss} para los distintos modelos evaluados utilizando la estrategia de aumentación combinada (2Geo+2Photo+1SEM).
 
 Se observa un comportamiento interesante en los modelos grandes. El Swin Large (línea roja), a pesar de su mayor capacidad, no logra reducir el \emph{Validation Loss} al mismo ritmo que su contraparte estándar, posiblemente debido a que la cantidad de datos, aun con aumentación, sigue siendo insuficiente para saturar la capacidad del modelo sin un ajuste más fino de hiperparámetros.
 
@@ -752,7 +776,7 @@ Para visualizar el impacto cualitativo de este incremento en los datos, la Figur
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\linewidth]{progression.png}
+    \includegraphics[width=0.9\linewidth]{progression.jpg}
     \caption{Evolución cualitativa de la segmentación al aumentar el porcentaje de datos de entrenamiento. Se observa una mejora progresiva en la coherencia de las regiones detectadas.}
     \label{fig:progression}
 \end{figure}
@@ -760,7 +784,7 @@ Para visualizar el impacto cualitativo de este incremento en los datos, la Figur
 
 \subsection{Evaluación Cualitativa en Test}
 
-Para complementar los resultados cuantitativos, se realizó una evaluación visual sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo-estrategia que demostró el mayor rendimiento global según la métrica F1-score: el \textbf{Swin Transformer Estándar} entrenado con la estrategia de \textbf{Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM)}.
+Para complementar los resultados cuantitativos, se realizó una evaluación visual sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo-estrategia que demostró el mayor rendimiento global según la métrica F1-score: el Swin Transformer Estándar entrenado con la estrategia de Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM).
 
 La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por esta configuración óptima. La visualización se estructura en tres columnas para facilitar el cotejo directo: la primera columna muestra la imagen SEM original, capturando la textura compleja del material; la columna central exhibe la máscara de referencia (\emph{Ground Truth}) generada por expertos; y la tercera columna presenta la segmentación inferida por el modelo.
 
@@ -768,7 +792,7 @@ La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por e
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\linewidth, height=0.95\textheight, keepaspectratio]{test_predictions.png}
+    \includegraphics[width=0.9\linewidth, height=0.95\textheight, keepaspectratio]{test_predictions.jpg}
     \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo Swin Transformer final.}
     \label{fig:test_predictions}
 \end{figure}
