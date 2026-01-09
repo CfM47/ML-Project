@@ -3,6 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import os
 import math
+import numpy as np
 
 def ensure_dir(directory):
     if not os.path.exists(directory):
@@ -25,9 +26,39 @@ def get_plot_layout(num_plots):
     rows = math.ceil(num_plots / cols)
     return rows, cols
 
+def compute_average_curve(history, metric_name):
+    """
+    Computes average curve across folds.
+    Returns: epochs (list), avg_values (list)
+    """
+    if not history:
+        return [], []
+    
+    # Find min number of epochs to ensure we can average
+    min_epochs = min(len(fold) for fold in history)
+    
+    avg_values = []
+    epochs = []
+    
+    for epoch_idx in range(min_epochs):
+        # Collect values for this epoch from all folds
+        val_sum = 0
+        count = 0
+        epoch_num = history[0][epoch_idx]['epoch'] # Assume all have same epoch numbering
+        
+        for fold_data in history:
+            val_sum += fold_data[epoch_idx][metric_name]
+            count += 1
+            
+        avg_values.append(val_sum / count)
+        epochs.append(epoch_num)
+        
+    return epochs, avg_values
+
 def plot_train_vs_val(data, base_output_dir):
     """
     1. Train Loss vs Val Loss for each Augmentator + Model.
+    Includes Average plot.
     """
     output_dir = os.path.join(base_output_dir, "train_vs_val")
     ensure_dir(output_dir)
@@ -46,15 +77,18 @@ def plot_train_vs_val(data, base_output_dir):
             if num_folds == 0:
                  continue
 
-            rows, cols = get_plot_layout(num_folds)
+            # Add one for the Average plot
+            total_plots = num_folds + 1
+            rows, cols = get_plot_layout(total_plots)
             fig, axes = plt.subplots(rows, cols, figsize=(12, 6 * rows))
             fig.suptitle(f"{augmentator_name} - {model_name}\nTrain vs Val Loss", fontsize=16)
             
-            if num_folds > 1:
+            if total_plots > 1:
                 axes_flat = axes.flatten()
             else:
                 axes_flat = [axes]
 
+            # Plot Individual Folds
             for i, fold_epochs in enumerate(training_history):
                 ax = axes_flat[i]
                 
@@ -72,8 +106,23 @@ def plot_train_vs_val(data, base_output_dir):
                 ax.grid(True)
                 ax.set_ylim(bottom=0)
             
+            # Plot Average
+            ax_avg = axes_flat[num_folds]
+            avg_epochs, avg_train = compute_average_curve(training_history, 'train_loss')
+            _, avg_val = compute_average_curve(training_history, 'val_loss')
+            
+            ax_avg.plot(avg_epochs, avg_train, label='Avg Train Loss', marker='o', linestyle='-', color='purple')
+            ax_avg.plot(avg_epochs, avg_val, label='Avg Val Loss', marker='x', linestyle='--', color='orange')
+            
+            ax_avg.set_title(f"Average ({num_folds} folds)")
+            ax_avg.set_xlabel("Epoch")
+            ax_avg.set_ylabel("Loss")
+            ax_avg.legend()
+            ax_avg.grid(True)
+            ax_avg.set_ylim(bottom=0)
+
             # Hide unused subplots
-            for j in range(i + 1, len(axes_flat)):
+            for j in range(total_plots, len(axes_flat)):
                 axes_flat[j].axis('off')
 
             plt.tight_layout(rect=[0, 0.03, 1, 0.97])
@@ -86,23 +135,14 @@ def plot_train_vs_val(data, base_output_dir):
 def plot_comparisons(data, group_by, metric, base_output_dir):
     """
     Generates comparison plots.
-    
-    Args:
-        data: The loaded JSON data.
-        group_by: 'augmentator' (fix Model, vary Augmentator) or 'model' (fix Augmentator, vary Model).
-        metric: 'val_loss' or 'train_loss'.
-        base_output_dir: Root output directory.
+    Includes Average plot in the last subplot.
     """
     
-    # Define folder name based on type
     if group_by == 'augmentator':
-        # Fix Model, compare Augmentations
         folder_name = f"compare_augmentations_{metric.split('_')[0]}" 
-        # e.g., compare_augmentations_val or compare_augmentations_train
         primary_key_type = "Model"
         secondary_key_type = "Augmentator"
         
-        # We need to pivot data: items[Model][Augmentator]
         items = {}
         for aug_name, aug_data in data.items():
             for mod_name, mod_data in aug_data.items():
@@ -111,11 +151,10 @@ def plot_comparisons(data, group_by, metric, base_output_dir):
                 items[mod_name][aug_name] = mod_data
                 
     elif group_by == 'model':
-        # Fix Augmentator, compare Models
         folder_name = f"compare_models_{metric.split('_')[0]}"
         primary_key_type = "Augmentator"
         secondary_key_type = "Model"
-        items = data # Already in data[Augmentator][Model] format
+        items = data 
     else:
         return
 
@@ -124,10 +163,7 @@ def plot_comparisons(data, group_by, metric, base_output_dir):
     print(f"Generating: {folder_name} plots...")
 
     for primary_name, secondary_dict in items.items():
-        # primary_name is e.g., "ViT_Model" (if group_by='augmentator')
-        # secondary_dict contains data for different augmentations
         
-        # Check if we have valid data to figure out max folds
         max_folds = 0
         valid_entries = []
         
@@ -139,12 +175,14 @@ def plot_comparisons(data, group_by, metric, base_output_dir):
         if max_folds == 0:
             continue
 
-        rows, cols = get_plot_layout(max_folds)
+        # Add one for Average plot
+        total_plots = max_folds + 1
+        rows, cols = get_plot_layout(total_plots)
         fig, axes = plt.subplots(rows, cols, figsize=(12, 6 * rows))
         metric_title = "Validation Loss" if metric == 'val_loss' else "Training Loss"
         fig.suptitle(f"{primary_key_type}: {primary_name}\nComparing {secondary_key_type}s ({metric_title})", fontsize=16)
         
-        if max_folds > 1:
+        if total_plots > 1:
             axes_flat = axes.flatten()
         else:
             axes_flat = [axes]
@@ -173,8 +211,30 @@ def plot_comparisons(data, group_by, metric, base_output_dir):
             if has_data:
                 ax.legend(fontsize='small')
 
+        # Draw Average Plot
+        ax_avg = axes_flat[max_folds]
+        ax_avg.set_title(f"Average (All Folds)")
+        ax_avg.set_xlabel("Epoch")
+        ax_avg.set_ylabel("Loss")
+        ax_avg.grid(True)
+        ax_avg.set_ylim(bottom=0)
+        
+        has_avg_data = False
+        for sec_name in valid_entries:
+            sec_data = secondary_dict[sec_name]
+            history = sec_data['training_history']
+            
+            if history:
+                 avg_epochs, avg_values = compute_average_curve(history, metric)
+                 if avg_epochs:
+                     ax_avg.plot(avg_epochs, avg_values, label=sec_name)
+                     has_avg_data = True
+        
+        if has_avg_data:
+            ax_avg.legend(fontsize='small')
+
         # Hide unused subplots
-        for j in range(max_folds, len(axes_flat)):
+        for j in range(total_plots, len(axes_flat)):
             axes_flat[j].axis('off')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.97])
@@ -193,16 +253,16 @@ if __name__ == "__main__":
         # 1. Train vs Val (Original)
         plot_train_vs_val(data, PLOTS_DIR)
         
-        # 2. Compare Augmentations (Val Loss) -> Fix Model
+        # 2. Compare Augmentations (Val Loss)
         plot_comparisons(data, group_by='augmentator', metric='val_loss', base_output_dir=PLOTS_DIR)
         
-        # 3. Compare Models (Val Loss) -> Fix Augmentator
+        # 3. Compare Models (Val Loss)
         plot_comparisons(data, group_by='model', metric='val_loss', base_output_dir=PLOTS_DIR)
         
-        # 4. Compare Augmentations (Train Loss) -> Fix Model
+        # 4. Compare Augmentations (Train Loss)
         plot_comparisons(data, group_by='augmentator', metric='train_loss', base_output_dir=PLOTS_DIR)
         
-        # 5. Compare Models (Train Loss) -> Fix Augmentator
+        # 5. Compare Models (Train Loss)
         plot_comparisons(data, group_by='model', metric='train_loss', base_output_dir=PLOTS_DIR)
         
         print("All plots generated successfully.")
