@@ -719,6 +719,19 @@ Un fenómeno particular se observó en el escenario de aumentación combinada \t
 \end{figure}
 
 
+\subsection{Análisis de Escalabilidad de Datos}
+
+Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo, analizando la evolución de la pérdida (loss) mínima alcanzada en validación en función del porcentaje de datos utilizados para el entrenamiento.
+
+La Figura~\ref{fig:loss_vs_data} ilustra esta relación. Se observa una clara tendencia decreciente en la pérdida a medida que aumenta el tamaño del dataset, lo cual confirma que los modelos actuales no han saturado su capacidad de aprendizaje y se beneficiarían significativamente de la incorporación de más muestras etiquetadas. La curva sugiere un comportamiento de rendimientos decrecientes típico, donde las ganancias iniciales al aumentar los datos son rápidas, pero requieren volúmenes exponencialmente mayores para obtener mejoras marginales posteriores.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{loss_vs_data_size.png}
+    \caption{Relación entre el tamaño del dataset de entrenamiento y la pérdida mínima en validación. La tendencia indica que el aumento en la disponibilidad de datos contribuye consistentemente a la reducción del error del modelo.}
+    \label{fig:loss_vs_data}
+\end{figure}
+
 \section{Conclusiones}
 % - Resumen de hallazgos principales
 % - Mejor estrategia de segmentación
