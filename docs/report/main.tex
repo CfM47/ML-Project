@@ -83,7 +83,7 @@
 % Linebreaks \\ can be used within to get better formatting as desired.
 % Do not put math or special symbols in the title.
 \title{Segmentación de Zonas de Fractura en Imágenes SEM: \\
-       Comparación de Estrategias mediante un Enfoque AutoML}
+       Análisis Comparativo mediante Experimentación Automatizada }
 %
 %
 % author names and IEEE memberships
@@ -586,7 +586,7 @@ Este conjunto de métricas proporciona una evaluación integral del desempeño, 
 
 \section{Resultados}
 
-En esta sección se presentan los resultados obtenidos a partir de las distintas combinaciones de estrategias de aumentación y modelos de segmentación evaluados. El desempeño se reporta mediante el F1-score macro y el tiempo total de ejecución, ambos agregados sobre las validaciones correspondientes.
+En esta sección se presentan los resultados obtenidos a partir de las distintas combinaciones de estrategias de aumentación y modelos de segmentación evaluados. El desempeño se reporta mediante el \emph{F1-score} macro, exactitud (\emph{accuracy}), cohesion de la máscara (\emph{mask cohesion}) promedio en los $k=5$ folds y el tiempo total de ejecución, ambos agregados sobre las validaciones correspondientes.
 
 \subsection{Configuración de los modelos evaluados}
 
@@ -735,9 +735,11 @@ Un fenómeno particular se observó en el escenario de aumentación combinada \t
 
 \subsection{Análisis de Escalabilidad de Datos}
 
-Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo, analizando la evolución de la pérdida (loss) mínima alcanzada en validación en función del porcentaje de datos utilizados para el entrenamiento.
 
-La Figura~\ref{fig:loss_vs_data} ilustra esta relación. Se observa una clara tendencia decreciente en la pérdida a medida que aumenta el tamaño del dataset, lo cual confirma que los modelos actuales no han saturado su capacidad de aprendizaje y se beneficiarían significativamente de la incorporación de más muestras etiquetadas. La curva sugiere un comportamiento de rendimientos decrecientes típico, donde las ganancias iniciales al aumentar los datos son rápidas, pero requieren volúmenes exponencialmente mayores para obtener mejoras marginales posteriores.
+Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo. Este análisis se llevó a cabo utilizando el modelo \emph{Swin Transformer} en su configuración estándar, entrenado con subconjuntos del dataset original sin aplicar técnicas de aumentación. El objetivo fue evaluar la capacidad de aprendizaje intrínseca de la arquitectura frente a la estricta escasez de datos.
+
+La Figura~\ref{fig:loss_vs_data} ilustra la evolución de la pérdida (\emph{loss}) mínima alcanzada en validación en función del porcentaje de datos disponibles. Se observa una clara tendencia decreciente en la pérdida a medida que aumenta el tamaño del dataset, lo cual confirma que el modelo no ha saturado su capacidad de aprendizaje (no ha alcanzado un \emph{plateau} de rendimiento por falta de parámetros) y se beneficiaría significativamente de la incorporación de más muestras etiquetadas. Esto justifica empíricamente la necesidad crítica de las estrategias de aumentación implementadas en este trabajo para simular un régimen de datos más abundante y explotar el potencial de la arquitectura.
+
 
 \begin{figure}[h]
     \centering
@@ -758,9 +760,11 @@ Para visualizar el impacto cualitativo de este incremento en los datos, la Figur
 
 \subsection{Evaluación Cualitativa en Test}
 
-Para complementar los resultados cuantitativos, se realizó una evaluación visual del modelo final Swin Transformer (entrenado con el dataset completo aumentado) sobre un conjunto de prueba independiente. La Figura~\ref{fig:test_predictions} presenta una comparativa cualitativa de las segmentaciones generadas.
+Para complementar los resultados cuantitativos, se realizó una evaluación visual sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo-estrategia que demostró el mayor rendimiento global según la métrica F1-score: el \textbf{Swin Transformer Estándar} entrenado con la estrategia de \textbf{Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM)}.
 
-En la visualización se muestran tres columnas: a la izquierda, la imagen SEM original; en el centro, la máscara de referencia manual (Ground Truth); y a la derecha, la segmentación predicha por el modelo. Se observa una alta correspondencia estructural entre las predicciones y las anotaciones humanas, destacando la capacidad del modelo para delinear correctamente las fronteras entre zonas frágiles y dúctiles, incluso en áreas de transición compleja. Estos resultados cualitativos respaldan las métricas obtenidas y confirman la aplicabilidad práctica de la solución propuesta.
+La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por esta configuración óptima. La visualización se estructura en tres columnas para facilitar el cotejo directo: la primera columna muestra la imagen SEM original, capturando la textura compleja del material; la columna central exhibe la máscara de referencia (\emph{Ground Truth}) generada por expertos; y la tercera columna presenta la segmentación inferida por el modelo.
+
+
 
 \begin{figure}[H]
     \centering
@@ -768,6 +772,9 @@ En la visualización se muestran tres columnas: a la izquierda, la imagen SEM or
     \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo Swin Transformer final.}
     \label{fig:test_predictions}
 \end{figure}
+
+El análisis detallado de estas imágenes revela que el modelo ha logrado aprender no solo la textura local, sino la topología de las fracturas. Se observa una notable precisión en la delimitación de las zonas dúctiles frente a las áreas frágiles, respetando los bordes irregulares característicos de estas morfologías. Incluso en regiones donde el contraste es bajo o la transición es sutil, el modelo mantiene una coherencia estructural alta, evitando la fragmentación excesiva y demostrando una generalización robusta ante datos no vistos.
+
 
 \section{Conclusiones}
 % - Resumen de hallazgos principales
