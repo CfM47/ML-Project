@@ -82,8 +82,8 @@
 % not capitalized unless they are the first or last word of the title.
 % Linebreaks \\ can be used within to get better formatting as desired.
 % Do not put math or special symbols in the title.
-\title{Segmentación de Imágenes SEM mediante AutoML: \\
-       Comparación de Estrategias de Segmentación}
+\title{Segmentación de Zonas de Fractura en Imágenes SEM: \\
+       Comparación de Estrategias mediante un Enfoque AutoML}
 %
 %
 % author names and IEEE memberships
@@ -120,7 +120,7 @@
 % end{IEEEkeywords}
 
 \begin{abstract}
-Se presenta un enfoque de aprendizaje automático para la detección de zonas frágiles y dúctiles en imágenes obtenidas mediante microscopía electrónica de barrido. El estudio compara modelos del estado del arte basados en transformers con estrategias de segmentación propuestas, integradas en un framework AutoML. La selección del modelo se realiza a partir de métricas de desempeño relevantes, considerando explícitamente las limitaciones computacionales del entorno de ejecución. Los resultados muestran la viabilidad del enfoque bajo recursos restringidos y evidencian el impacto del uso de aumentación de datos y transferencia de aprendizaje en la calidad de la segmentación.
+Se presenta un enfoque sistemático para la detección de zonas frágiles y dúctiles en imágenes obtenidas mediante microscopía electrónica de barrido (SEM), un problema clave en la caracterización de fracturas. Para abordar la selección del modelo óptimo, se implementó un pipeline de AutoML ligero que permite la experimentación ágil con modelos basados en transformers y estrategias de segmentación jerárquica. La viabilidad de estas estrategias se evalúa bajo un marco experimental riguroso que considera explícitamente las limitaciones computacionales y la escasez de datos etiquetados. Los resultados evidencian cómo las técnicas de aumentación de datos y la transferencia de aprendizaje impactan en la calidad de la segmentación, ofreciendo una solución efectiva para el análisis automatizado de materiales.
 \end{abstract}
 
 \section{Introducción}
@@ -128,11 +128,11 @@ La caracterización de los mecanismos de fractura en materiales es un problema c
 
 Las imágenes obtenidas mediante microscopía electrónica de barrido (SEM) constituyen una de las principales herramientas para el estudio de superficies de fractura y microestructuras. No obstante, el análisis tradicional de este tipo de imágenes se basa en inspección visual experta, lo cual introduce subjetividad, limita la reproducibilidad de los resultados y dificulta su aplicación a grandes volúmenes de datos.
 
-En este contexto, las técnicas de aprendizaje automático y, en particular, los modelos de visión por computador han mostrado un potencial significativo para automatizar tareas de clasificación y segmentación en imágenes complejas. Recientemente, modelos basados en transformers, como Vision Transformer (ViT) y Swin Transformer, han alcanzado resultados destacados en diversas tareas de análisis de imágenes, posicionándose como referentes del estado del arte. Sin embargo, su aplicación práctica suele estar condicionada por la disponibilidad de datos anotados y recursos computacionales elevados.
+En este contexto, las técnicas de aprendizaje automático y, en particular, los modelos de visión por computador han mostrado un potencial significativo para automatizar la identificación y delimitación de estas zonas en imágenes complejas. Recientemente, modelos basados en transformers, como Vision Transformer (ViT) y Swin Transformer, han alcanzado resultados destacados en tareas de segmentación semántica, posicionándose como herramientas prometedoras para la metalografía cuantitativa. Sin embargo, su aplicación efectiva en este dominio suele estar condicionada por la disponibilidad de datos anotados por expertos y recursos computacionales elevados.
 
 Estas limitaciones motivan la exploración de estrategias alternativas que permitan aprovechar modelos de alto desempeño bajo restricciones de cómputo y datos. En este trabajo se consideran tanto modelos del estado del arte como enfoques propuestos basados en la descomposición espacial de la imagen y el uso de clasificadores preentrenados, con el objetivo de transferir conocimiento desde tareas de clasificación hacia problemas de segmentación.
 
-Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de modelos y el ajuste de hiperparámetros, empleando metaheurísticas y considerando explícitamente las restricciones impuestas por un entorno de cómputo limitado. El objetivo de este estudio es evaluar la viabilidad y el desempeño de estas estrategias para la detección de zonas frágiles y dúctiles en imágenes SEM, comparando modelos del estado del arte con enfoques alternativos bajo condiciones realistas de entrenamiento y evaluación.
+Adicionalmente, se adopta un diseño de experimentación automatizada (un AutoML bastante simple) para facilitar la selección de modelos y el ajuste de hiperparámetros. Este enfoque simplificado permite evaluar múltiples configuraciones de pipelines de manera eficiente, considerando explícitamente las restricciones impuestas por un entorno de cómputo limitado. El objetivo de este estudio es determinar la estrategia más efectiva para la caracterización automática de zonas frágiles y dúctiles, utilizando esta herramienta experimental para comparar arquitecturas del estado del arte con enfoques alternativos.
 
 % \section{Estado del arte}
 % segmentacion
@@ -164,50 +164,32 @@ Para cuantificar el desempeño en segmentación, las fuentes destacan cuatro mé
     \item AP (Average Precision): Utilizada comúnmente en segmentación de instancias para evaluar la detección de objetos individuales.
 \end{itemize}
 
-\section{Metodología basada en AutoML}
-La resolución del problema de segmentación se abordó mediante un enfoque de AutoML diseñado específicamente para garantizar modularidad, reproducibilidad y comparabilidad sistemática entre distintas configuraciones experimentales. La metodología no se limita a la automatización del entrenamiento, sino que establece una arquitectura formal que define claramente cada etapa del flujo de datos y permite intercambiar componentes de manera controlada.
+\section{Metodología Experimental y Pipeline AutoML}
+La resolución del problema de segmentación se abordó mediante un diseño experimental modular que garantiza la reproducibilidad y la comparabilidad entre distintas configuraciones. La metodología establece un flujo de trabajo claro para el procesamiento de datos, entrenamiento y evaluación, permitiendo aislar el impacto de cada componente en el desempeño final.
 
-Arquitectura general del pipeline
+\subsection{Diseño del Pipeline de Selección}
 
-El núcleo metodológico se basa en un pipeline lineal de procesamiento, en el cual los datos fluyen secuencialmente a través de nodos bien definidos. Este pipeline sigue el esquema general:
+El núcleo metodológico se basa en un pipeline lineal de procesamiento, donde los datos fluyen secuencialmente a través de etapas bien definidas:
 
 \begin{equation}
     \begin{aligned}
-        \text{Dataset inicial} & \rightarrow \text{Nodo de aumentación} \rightarrow \text{Nodo de modelo} \\ 
-        &\rightarrow \text{Nodo de evaluación} \rightarrow \text{Resultados finales}
+        \text{Imágenes de Fractura} & \rightarrow \text{Preprocesamiento y Aumentación} \rightarrow \text{Segmentación Semántica} \\ 
+        &\rightarrow \text{Mapas de Zonas Dúctil/Frágil} \rightarrow \text{Evaluación de Métricas}
     \end{aligned}
 \end{equation}
 
-Cada etapa del pipeline encapsula una responsabilidad única y explícita, evitando dependencias implícitas y facilitando el análisis aislado del impacto de cada decisión metodológica. La coordinación de este flujo está a cargo de una clase orquestadora central, denominada \emph{AutoML}, cuya función es estrictamente organizativa.
+Esta estructura asegura que todas las estrategias de segmentación sean evaluadas bajo las mismas condiciones.
 
-El diseño del framework se fundamenta en el uso extensivo de interfaces abstractas. Todas las etapas del pipeline implementan contratos formales definidos a nivel de interfaz, lo que permite desacoplar completamente la lógica de alto nivel de las implementaciones concretas. Este enfoque garantiza que diferentes estrategias —por ejemplo, distintos esquemas de validación o arquitecturas de red— puedan sustituirse sin alterar la estructura global del sistema.
+\subsection{Estrategia de Aumentación y Validación}
+La primera etapa define el protocolo de datos. Se implementa una estrategia de partición rigurosa (validación cruzada o split fijo) y se aplican técnicas de aumentación de datos de manera controlada. Esto garantiza que todos los modelos vean exactamente las mismas distribuciones de datos durante el entrenamiento y sean evaluados sobre el mismo conjunto de validación, evitando fugas de información.
 
-La metodología adopta el principio de composición: la clase \emph{AutoML} no implementa lógica de entrenamiento, aumentación ni evaluación, sino que recibe instancias de nodos que cumplen interfaces predefinidas y las ejecuta en el orden correcto. Esto resulta en un núcleo extremadamente estable y fácil de auditar desde el punto de vista metodológico.
+\subsection{Protocolo de Entrenamiento}
+Cada arquitectura de segmentación (ViT, Swin, Quadtree) se entrena siguiendo un protocolo estandarizado. Se encapsula la lógica de entrenamiento para mantener interfaces consistentes, permitiendo comparar modelos de naturaleza muy distinta (e.g., redes neuronales profundas vs. algoritmos recursivos) bajo un marco común.
 
-\subsection{Nodo de aumentación y partición de datos}
-El primer componente del pipeline es el nodo de aumentación de datos, responsable de transformar el dataset original y generar las particiones de entrenamiento y validación. Este nodo recibe el dataset completo y produce una lista de pares 
-$(D_{train},D_{val})$ lo que permite soportar tanto divisiones simples como esquemas de validación cruzada k-fold.
+\subsection{Evaluación Sistemática}
+La etapa final consiste en el cálculo de métricas de desempeño sobre las predicciones. Este proceso es independiente del entrenamiento y utiliza un conjunto de métricas estándar para cuantificar la calidad de la segmentación. La separación entre inferencia y evaluación asegura que los resultados sean imparciales y directamente comparables.
 
-Desde el punto de vista metodológico, esta decisión es clave: todas las transformaciones de datos y estrategias de partición quedan formalizadas en un único punto del pipeline, evitando fugas de información y asegurando que todos los modelos evaluados operen bajo condiciones comparables.
-
-\subsection{Nodo de modelo}
-El nodo de modelo constituye el núcleo computacional del sistema. Para cada par de datasets generado por el nodo de aumentación, este componente entrena una instancia del modelo especificado y posteriormente genera predicciones sobre el conjunto de validación. El resultado de esta etapa es una colección estructurada de pares de máscaras predichas y reales, organizada por pliegue cuando corresponde.
-
-Cada arquitectura se encapsula en una implementación concreta de este nodo, manteniendo la misma interfaz externa. Esto permite comparar modelos de distinta naturaleza bajo un marco experimental idéntico, aislando el efecto de la arquitectura del resto del pipeline.
-
-\subsection{Nodo de evaluación}
-El nodo de evaluación recibe exclusivamente las predicciones y las máscaras reales producidas por el nodo de modelo. Su responsabilidad es calcular las métricas de desempeño de forma agregada y consistente. Internamente, este nodo delega el cálculo a evaluadores individuales, cada uno asociado a una métrica específica.
-
-Desde el punto de vista metodológico, este desacoplamiento garantiza que las métricas no influyan en el proceso de entrenamiento ni en la generación de predicciones, evitando sesgos y permitiendo incorporar nuevas métricas sin modificar etapas previas del pipeline.
-
-\subsection{Orquestación y ejecución automática}
-La clase \emph{AutoML} actúa como el punto único de ejecución del experimento. Su método principal ejecuta secuencialmente los nodos de aumentación, modelo y evaluación, y retorna un conjunto final de métricas. Este diseño minimalista reduce la complejidad cognitiva del sistema y asegura que el flujo experimental sea explícito y reproducible.
-
-La automatización se logra mediante la ejecución repetida del pipeline con distintas combinaciones de nodos y configuraciones. De este modo, el proceso de selección de modelos e hiperparámetros se formaliza como una exploración sistemática del espacio de configuraciones, donde el criterio de selección se basa exclusivamente en las métricas producidas por el nodo evaluador.
-
-La construcción concreta de los nodos no se realiza directamente en los scripts experimentales, sino mediante funciones de configuración ubicadas en un módulo dedicado. Este enfoque separa claramente la definición del experimento de la lógica interna del framework, mejorando la legibilidad, reduciendo errores de configuración y facilitando la reproducibilidad de los resultados.
-
-Esta metodología basada en \emph{AutoML} establece una base sólida y extensible para todo el desarrollo posterior, dentro de un marco experimental unificado y controlado.
+Este diseño experimental sistemático permite explorar el espacio de configuraciones (arquitecturas, hiperparámetros, estrategias de aumentación) de manera ordenada, fundamentando la selección del mejor modelo en evidencia empírica robusta.
 
 \section{Descripción del dataset}
 % - División train/test
@@ -220,7 +202,7 @@ A continuación se proporciona información sobre los datasets utilizados.
 
 El dataset principal utilizado para la tarea de segmentación está compuesto por 94 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
 
-Las máscaras consideran exclusivamente dos clases mutuamente excluyentes: material frágil y material dúctil. A nivel global, el conjunto presenta un desbalance significativo entre clases, con 73 imágenes predominantemente dúctiles y 21 imágenes predominantemente frágiles. Esta distribución refleja la naturaleza del material analizado y constituye un desafío adicional.
+Las máscaras de referencia delimitan dos morfologías de fractura fundamentales: zonas de comportamiento frágil y zonas de comportamiento dúctil. A nivel global, el conjunto presenta un desbalance significativo, con 73 imágenes donde predomina la fractura dúctil y 21 imágenes con mayor presencia de fractura frágil. Esta distribución refleja la naturaleza del material analizado y constituye un desafío adicional para la generalización del modelo.
 
 Las imágenes originales presentan tamaños variables, lo cual motivó la adopción de un preprocesamiento de redimensionamiento a una resolución fija de $512 \times 512$ píxeles para los modelos basados en transformers y para el análisis estadístico espacial.
 
@@ -273,10 +255,9 @@ La salida del encoder, expresada como una secuencia de vectores latentes, es ree
 
 Este proceso se lleva a cabo mediante una serie de etapas de refinamiento y reescalado, en las cuales se combinan convoluciones para la extracción local de características con operaciones de interpolación para el aumento gradual de la resolución. En la etapa final, una proyección lineal por píxel permite obtener, para cada clase, un mapa de activación que representa la pertenencia de cada píxel a las distintas regiones de interés.
 
-\subsubsection{Integración en el pipeline de AutoML}
+\subsubsection{Integración en el esquema experimental}
 
-La arquitectura ViT descrita se integra en el pipeline de AutoML mediante un componente que encapsula tanto el proceso de entrenamiento como la generación de predicciones. Este componente actúa como intermediario entre el modelo de segmentación y el resto del framework, garantizando que el ViT pueda ser tratado de manera homogénea junto con otras arquitecturas.
-
+La arquitectura ViT descrita se integra en el diseño experimental como un módulo autocontenido. 
 Durante el entrenamiento, se emplea un esquema supervisado estándar para segmentación multiclase, utilizando funciones de pérdida adecuadas para este tipo de problema y validación sobre datos no vistos para monitorear el desempeño. En la fase de inferencia, las salidas continuas del modelo son convertidas en máscaras discretas mediante una asignación por máxima activación, produciendo mapas de segmentación directamente comparables con las máscaras de referencia.
 
 Esta estrategia combina la capacidad de los Vision Transformers para modelar contexto global con la precisión espacial de decodificadores convolucionales, resultando adecuada para problemas de segmentación.
@@ -303,11 +284,10 @@ Una vez ajustada la resolución, las características son procesadas por el mism
 
 \subsubsection{Entrenamiento, regularización y evaluación}
 
-La integración del modelo Swin en el pipeline de AutoML se realiza a través de un componente que encapsula el proceso completo de entrenamiento y evaluación, manteniendo la misma interfaz que otros segmentadores. Esto garantiza la interoperabilidad dentro del framework y permite su comparación directa con enfoques alternativos.
-
+El proceso de entrenamiento del modelo Swin incorpora monitoreo constante del desempeño.
 Un aspecto distintivo de esta estrategia es la incorporación de un mecanismo de \emph{early stopping} durante el entrenamiento. Este mecanismo monitoriza el desempeño sobre el conjunto de validación y detiene el proceso de optimización cuando no se observan mejoras durante un número predefinido de iteraciones consecutivas. De este modo, se reduce el riesgo de sobreajuste y se selecciona automáticamente el estado del modelo con mejor capacidad de generalización.
 
-En la fase de inferencia, el modelo genera mapas de activación multiclase que son transformados en máscaras de segmentación discretas mediante una asignación por máxima respuesta. Estas máscaras se utilizan posteriormente en el módulo de evaluación, asegurando consistencia con el resto de modelos analizados.
+En la fase de inferencia, el modelo genera mapas de activación multiclase que son transformados en máscaras de segmentación discretas de forma análoga al modelo ViT, asegurando consistencia.
 
 El segmentador basado en Swin Transformer combina eficiencia computacional, representación jerárquica multiescala y mecanismos de regularización explícitos, constituyendo una alternativa de alto nivel dentro del estado del arte para segmentación semántica en imágenes complejas.
 
@@ -494,11 +474,11 @@ Dado que el clasificador se emplea para evaluar regiones de distinto tamaño den
 
 Este procedimiento permite aplicar un clasificador entrenado sobre imágenes completas a subregiones arbitrarias, manteniendo la coherencia de las predicciones y asegurando una integración transparente con el algoritmo de segmentación jerárquica.
 
-\subsubsection{Entrenamiento y rol dentro del framework}
+\subsubsection{Entrenamiento y rol en la segmentación}
 
 El clasificador puede entrenarse de manera independiente sobre conjuntos de datos externos de clasificación, utilizando un esquema supervisado estándar. Una vez finalizado el entrenamiento, el modelo se emplea principalmente en modo de inferencia, proporcionando predicciones rápidas y consistentes durante la ejecución del algoritmo quadtree.
 
-Dentro del framework AutoML, este clasificador actúa como un componente intercambiable, lo que permite evaluar distintas arquitecturas de clasificación bajo el mismo esquema de segmentación. De este modo, el análisis se centra en estudiar cómo la capacidad discriminativa del clasificador influye en la calidad final de la segmentación basada en descomposición jerárquica.
+Dentro del diseño experimental, este clasificador actúa como un módulo intercambiable, lo que permite evaluar distintas arquitecturas de clasificación bajo el mismo esquema de segmentación. De este modo, el análisis se centra en estudiar cómo la capacidad discriminativa del clasificador influye en la calidad final de la segmentación basada en descomposición jerárquica.
 
 
 
@@ -562,12 +542,11 @@ Se implementaron métodos compuestos que permiten combinar varias aumentaciones 
 Estas estrategias permiten generar un dataset enriquecido sin comprometer la coherencia entre imágenes y máscaras.
 
 \subsection{Métricas de Evaluación}
-La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular y extensible, permitiendo calcular múltiples métricas a partir de una representación común de las predicciones y las máscaras de referencia. Todo el proceso es coordinado por un nodo evaluador central (\emph{EvaluatorNode}), cuyo objetivo es desacoplar la generación de predicciones del cálculo de métricas, facilitando comparaciones consistentes entre modelos y configuraciones experimentales.
+La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular, permitiendo calcular múltiples métricas a partir de una representación estándar de las predicciones y las máscaras de referencia.
 
-Para cada imagen del conjunto de validación, el modelo de segmentación genera una máscara predicha, la cual se empareja con su máscara real correspondiente. Este proceso produce una colección de pares 
-$(\hat M,M)$, denominada \emph{MaskPairs}. En escenarios con validación cruzada k-fold, estas colecciones se agrupan por pliegue, resultando en una estructura del tipo lista de listas; en el caso simple de train/validation split, existe un único conjunto de pares.
+Para cada imagen del conjunto de validación, el modelo de segmentación genera una máscara predicha, la cual se empareja con su máscara real correspondiente, generando pares de comparación $(\hat M,M)$.
 
-Esta estructura es la entrada principal del \emph{EvaluatorNode}, que no calcula métricas directamente, sino que delega el cómputo a evaluadores especializados. Cada evaluador implementa una métrica específica y devuelve un único valor escalar, el cual es finalmente agregado en un diccionario de resultados que resume el desempeño del modelo.
+Estos pares son procesados sistemáticamente para calcular métricas agregadas que resuman el desempeño del modelo. La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel.
 
 La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel. Para una clase dada, cada píxel de la máscara predicha se compara con la máscara real y se clasifica como verdadero positivo (TP), falso positivo (FP), falso negativo (FN) o verdadero negativo (TN). Los evaluadores acumulan estos conteos a lo largo de todas las imágenes antes de calcular la métrica final.
 
@@ -602,7 +581,7 @@ Este conjunto de métricas proporciona una evaluación integral del desempeño, 
 
 \section{Resultados}
 
-En esta sección se presentan los resultados obtenidos a partir de las distintas combinaciones de nodos de aumentación y nodos de segmentación evaluados dentro del framework AutoML. El desempeño se reporta mediante el F1-score macro y el tiempo total de ejecución, ambos agregados sobre las validaciones correspondientes.
+En esta sección se presentan los resultados obtenidos a partir de las distintas combinaciones de estrategias de aumentación y modelos de segmentación evaluados. El desempeño se reporta mediante el F1-score macro y el tiempo total de ejecución, ambos agregados sobre las validaciones correspondientes.
 
 \subsection{Configuración de los modelos evaluados}
 
