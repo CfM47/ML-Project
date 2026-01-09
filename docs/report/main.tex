@@ -94,7 +94,15 @@
 % was not built to handle multiple paragraphs
 %
 
-\author{Autor}
+\author{
+    Darío Hernández Cubilla, 
+    Diego Manuel Viera Martínez, 
+    Francisco Préstamo Bernárdez, 
+    Jossué Arteche Muñoz, 
+    Luis Alejandro Arteaga Morales, 
+    Mauricio Sunde Jimenez, 
+    Pablo Gómez Vidal
+    }
 
 
 % make the title area
@@ -176,12 +184,39 @@ La construcción concreta de los nodos no se realiza directamente en los scripts
 
 Esta metodología basada en \emph{AutoML} establece una base sólida y extensible para todo el desarrollo posterior, dentro de un marco experimental unificado y controlado.
 
-\section{Descripción del Dataset}
+\section{Descripción del dataset}
+% - División train/test
 % - Origen de las imágenes SEM
 % - Dimensiones (512x512)
 % - Clases de segmentación (frágil, dúctil, mixto)
 % - Distribución de clases
-% - División train/test
+A continuación se proporciona información sobre los datasets utilizados.
+\subsection{Dataset de segmentación}
+
+El dataset principal utilizado para la tarea de segmentación está compuesto por 94 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
+
+Las máscaras consideran exclusivamente dos clases mutuamente excluyentes: material frágil y material dúctil. A nivel global, el conjunto presenta un desbalance significativo entre clases, con 73 imágenes predominantemente dúctiles y 21 imágenes predominantemente frágiles. Esta distribución refleja la naturaleza del material analizado y constituye un desafío adicional.
+
+Las imágenes originales presentan tamaños variables, lo cual motivó la adopción de un preprocesamiento de redimensionamiento a una resolución fija de $512 \times 512$ píxeles para los modelos basados en transformers y para el análisis estadístico espacial.
+
+Con el objetivo de caracterizar la distribución espacial de las clases, se construyó el mapa de calor de la Figura~\ref{fig:heatmap_ductil} agregando las máscaras redimensionadas. Dado que las clases son excluyentes, el mapa de calor representa únicamente la frecuencia de la clase dúctil. Este análisis permitió identificar regiones con mayor recurrencia de comportamiento dúctil, así como zonas donde la presencia de material frágil es más probable, aportando una visión global de la estructura espacial del dataset.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{heatmap.png}
+    \caption{Mapa de calor de la distribución espacial de las clases dúctil y frágil, obtenido a partir de la superposición de las máscaras de segmentación redimensionadas a $512 \times 512$ píxeles.}
+    \label{fig:heatmap_ductil}
+\end{figure}
+
+
+\subsection{Dataset externo de clasificación}
+
+Para las tareas de clasificación, en particular aquellas asociadas a los enfoques basados en Quadtree y Sliding Window, se utilizó un dataset externo independiente del conjunto de segmentación. Este dataset fue empleado para entrenar los clasificadores auxiliares encargados de etiquetar regiones completas de imagen.
+
+El conjunto de datos corresponde al dataset de imágenes SEM publicado por Campari~\cite{campari_2025_15510590}, el cual contiene imágenes de microscopía electrónica anotadas a nivel de imagen para tareas de clasificación. El uso de este dataset permitió desacoplar el entrenamiento de los clasificadores del proceso de segmentación, habilitando estrategias de transferencia de aprendizaje desde clasificación hacia segmentación regional.
+
+Cabe destacar que este dataset externo no fue utilizado en ninguna etapa del entrenamiento de los modelos de segmentación directa, ni en la construcción del conjunto de prueba, garantizando así la independencia entre las fuentes de datos.
+
 
 \section{Estrategias de Segmentación}
 La segmentación de zonas frágiles y dúctiles se aborda mediante un conjunto de estrategias complementarias que responden a distintos niveles de complejidad y granularidad en la representación de la imagen. En primer lugar, se consideran arquitecturas basadas en Vision Transformers y Swin Transformers, seleccionadas por su capacidad para modelar dependencias espaciales de largo alcance y por su consolidación como enfoques de referencia en tareas de segmentación densa. Estos modelos permiten aprender representaciones globales y jerárquicas directamente a partir de la imagen completa, proporcionando una base sólida para la identificación precisa de regiones con comportamiento mecánico diferenciado.
@@ -564,9 +599,7 @@ De forma análoga, se consideraron dos variantes de Swin Transformer:
 \item Swin grande: embedding inicial de 128 dimensiones, una arquitectura más profunda [2, 2, 18, 2] y cabezales [8, 16, 32, 64].
 \end{itemize}
 
-Estas configuraciones corresponden aproximadamente a variantes tipo \emph{Tiny/Small} y \emph{Base/Large}, respectivamente.
-
-Los enfoques basados en \emph{Quadtree} y \emph{Sliding Window} utilizan clasificadores auxiliares (CNN o ViT) entrenados sobre datasets de clasificación independientes. Dado que el proceso de entrenamiento de estos modelos no depende directamente del dataset de segmentación, se optó por evaluar únicamente una configuración sin aumentación de datos, con el fin de reducir el costo computacional y evitar redundancias experimentales.
+Los enfoques basados en \emph{Quadtree} y \emph{Sliding Window} utilizan clasificadores auxiliares (CNN o ViT) entrenados sobre datasets de clasificación independientes. Dado que el proceso de entrenamiento de estos modelos no depende directamente del dataset de segmentación, se optó por evaluar únicamente una configuración sin aumentación de datos sobre el dataset de segmentación, con el fin de reducir el costo computacional y evitar redundancias experimentales.
 
 \subsection{Resultados sin aumentación de datos}
 
@@ -595,7 +628,7 @@ Sliding Window ViT (64/32) & 0.250 & 9141.4 \\
 \end{tabular}
 \end{table}
 
-Se observa que el modelo Swin estándar obtiene el mejor compromiso entre desempeño y costo computacional. Los enfoques jerárquicos y por ventanas presentan un rendimiento inferior, con un costo computacional considerablemente mayor, especialmente al emplear clasificadores basados en transformers.
+Se observa que el modelo Swin estándar obtiene el mejor desempeño y costo computacional. Los enfoques jerárquicos y por ventanas presentan un rendimiento inferior, con un costo computacional considerablemente mayor, especialmente al emplear clasificadores basados en transformers.
 
 \subsection{Resultados con aumentación combinada (2 geométricas, 2 fotométricas, 1 SEM)}
 
@@ -649,8 +682,8 @@ En conjunto, los resultados indican que los modelos Swin Transformer de compleji
 % - Limitaciones del trabajo
 % - Trabajo futuro
 
-% \bibliographystyle{plain}
-% \bibliography{referencias}
+\bibliographystyle{ieeetr}
+\bibliography{references}
 
 
 \end{document}
