@@ -56,6 +56,7 @@
 % *** PDF, URL AND HYPERLINK PACKAGES ***
 \usepackage{url}
 
+\usepackage{float}
 \usepackage{booktabs}
 
 % correct bad hyphenation here
@@ -675,6 +676,48 @@ Swin grande & 0.459 & 7697.5 \\
 En este escenario, el Swin estándar mantiene un desempeño estable y elevado, mientras que el Swin grande sufre una degradación significativa, lo que refuerza la hipótesis de sobreajuste bajo restricciones de datos y cómputo.
 
 En conjunto, los resultados indican que los modelos Swin Transformer de complejidad moderada ofrecen el mejor equilibrio entre capacidad de representación, robustez frente a aumentación y eficiencia computacional dentro del contexto evaluado.
+
+
+\subsection{Análisis de Curvas de Aprendizaje}
+
+Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
+
+\subsubsection{Comparativa de Validación por Aumentación}
+
+La Figura~\ref{fig:val_loss_combined} muestra la evolución del \emph{Validation Loss} para los distintos modelos evaluados utilizando la estrategia de aumentación combinada.
+
+Se observa un comportamiento interesante en los modelos grandes. El Swin Large (línea roja), a pesar de su mayor capacidad, no logra reducir el \emph{Validation Loss} al mismo ritmo que su contraparte estándar, posiblemente debido a que la cantidad de datos, aun con aumentación, sigue siendo insuficiente para saturar la capacidad del modelo sin un ajuste más fino de hiperparámetros.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{val_loss_combined_2geo.png}
+    \caption{Comparativa del \emph{Validation Loss} a lo largo de las épocas con aumentación combinada (2Geo+2Photo+1SEM).}
+    \label{fig:val_loss_combined}
+\end{figure}
+
+\subsubsection{Análisis de Sobreajuste en Modelos Swin}
+
+Un fenómeno particular se observó en el escenario de aumentación combinada \texttt{Combined\_2Geo\_2Photo\_1SEM\_x2}, comparando el Swin Standard y el Swin Large. La Figura~\ref{fig:overfitting_analysis} ilustra las curvas de \emph{Training Loss} vs. \emph{Validation Loss} para ambos casos.
+
+\begin{itemize}
+    \item \textbf{Swin Standard (Fig.~\ref{fig:swin_std_tv}):} Este modelo muestra un comportamiento clásico de \emph{overfitting} a partir de cierta etapa. El \emph{Training Loss} (línea azul) disminuye drásticamente, convergiendo casi a cero, mientras que el \emph{Validation Loss} (línea naranja) se estabiliza y comienza a divergir ligeramente o estancarse. Esto indica que el modelo, con su capacidad moderada, es capaz de memorizar eficazmente el conjunto de entrenamiento aumentado, pero esta memorización deja de traducirse en mejoras de generalización.
+    
+    \item \textbf{Swin Large (Fig.~\ref{fig:swin_large_tv}):} En contraste, el modelo grande muestra una dinámica diferente. Su \emph{Training Loss} no disminuye tan abruptamente como en el modelo estándar. Esto es contraintuitivo pero puede explicarse por la dificultad de optimizar una superficie de error mucho más compleja con un dataset limitado. El modelo grande parece "resistirse" más a la memorización rápida, manteniendo una brecha (\emph{gap}) más constante entre entrenamiento y validación. Esto sugiere que, paradójicamente, el modelo más grande podría beneficiarse más de un entrenamiento más prolongado o de un volumen de datos aún mayor para desbloquear su potencial, mientras que el modelo estándar alcanza su techo de rendimiento (y comienza a sobreajustarse) más temprano.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \subfloat[Swin Standard: Train vs Val]{
+        \includegraphics[width=0.9\linewidth]{train_val_swin_std.png}
+        \label{fig:swin_std_tv}}
+    \\
+    \subfloat[Swin Large: Train vs Val]{
+        \includegraphics[width=0.9\linewidth]{train_val_swin_large.png}
+        \label{fig:swin_large_tv}}
+    \caption{Análisis de curvas de entrenamiento y validación bajo aumentación combinada. Se observa un \emph{overfitting} más marcado en la caída del \emph{Training Loss} del modelo estándar en comparación con el modelo grande.}
+    \label{fig:overfitting_analysis}
+\end{figure}
+
 
 \section{Conclusiones}
 % - Resumen de hallazgos principales
