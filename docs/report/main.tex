@@ -125,6 +125,12 @@ Estas limitaciones motivan la exploración de estrategias alternativas que permi
 
 Adicionalmente, se adopta un enfoque AutoML para automatizar la selección de modelos y el ajuste de hiperparámetros, empleando metaheurísticas y considerando explícitamente las restricciones impuestas por un entorno de cómputo limitado. El objetivo de este estudio es evaluar la viabilidad y el desempeño de estas estrategias para la detección de zonas frágiles y dúctiles en imágenes SEM, comparando modelos del estado del arte con enfoques alternativos bajo condiciones realistas de entrenamiento y evaluación.
 
+% \section{Estado del arte}
+% segmentacion
+% clasificacion
+% data augmentation
+% evaluation
+
 \section{Metodología basada en AutoML}
 La resolución del problema de segmentación se abordó mediante un enfoque de AutoML diseñado específicamente para garantizar modularidad, reproducibilidad y comparabilidad sistemática entre distintas configuraciones experimentales. La metodología no se limita a la automatización del entrenamiento, sino que establece una arquitectura formal que define claramente cada etapa del flujo de datos y permite intercambiar componentes de manera controlada.
 
@@ -535,10 +541,107 @@ Este conjunto de métricas proporciona una evaluación integral del desempeño, 
 % - Flujo de ejecución
 
 \section{Resultados}
-% - Comparación de modelos
-% - Impacto de las estrategias de aumentación
-% - Tablas y gráficos de métricas
-% - Análisis cualitativo de segmentaciones
+
+En esta sección se presentan los resultados obtenidos a partir de las distintas combinaciones de nodos de aumentación y nodos de segmentación evaluados dentro del framework AutoML. El desempeño se reporta mediante el F1-score macro y el tiempo total de ejecución, ambos agregados sobre las validaciones correspondientes.
+
+\subsection{Configuración de los modelos evaluados}
+
+Antes de analizar los resultados, se describen brevemente las configuraciones de los modelos utilizados:
+
+Se evaluaron dos configuraciones de segmentadores ViT:
+
+\begin{itemize}
+\item ViT estándar: dimensión del embedding de 256, profundidad de 6 capas, 8 cabezales de atención y una MLP interna de dimensión 512.
+\item ViT grande: dimensión del embedding de 512, profundidad de 12 capas, 16 cabezales de atención y una MLP de dimensión 2048.
+\end{itemize}
+
+Ambos modelos fueron entrenados durante 40 épocas con tamaño de batch fijo y bajo las mismas condiciones de optimización.
+
+De forma análoga, se consideraron dos variantes de Swin Transformer:
+
+\begin{itemize}
+\item Swin estándar: embedding inicial de 64 dimensiones, con una jerarquía de profundidades [2, 2, 6, 2] y número de cabezales [4, 8, 16, 32].
+\item Swin grande: embedding inicial de 128 dimensiones, una arquitectura más profunda [2, 2, 18, 2] y cabezales [8, 16, 32, 64].
+\end{itemize}
+
+Estas configuraciones corresponden aproximadamente a variantes tipo \emph{Tiny/Small} y \emph{Base/Large}, respectivamente.
+
+Los enfoques basados en \emph{Quadtree} y \emph{Sliding Window} utilizan clasificadores auxiliares (CNN o ViT) entrenados sobre datasets de clasificación independientes. Dado que el proceso de entrenamiento de estos modelos no depende directamente del dataset de segmentación, se optó por evaluar únicamente una configuración sin aumentación de datos, con el fin de reducir el costo computacional y evitar redundancias experimentales.
+
+\subsection{Resultados sin aumentación de datos}
+
+La Tabla~\ref{tab:results_identity} muestra los resultados obtenidos utilizando el nodo de aumentación identidad (sin transformaciones adicionales).
+
+\begin{table}[ht]
+\centering
+\caption{Resultados con aumentación identidad}
+\label{tab:results_identity}
+\begin{tabular}{lcc}
+\hline
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Tiempo (s)} \\
+\hline
+ViT estándar & 0.598 & 1057.9 \\
+Swin estándar & \textbf{0.703} & \textbf{927.7} \\
+ViT grande & 0.541 & 2407.9 \\
+Swin grande & 0.556 & 2715.2 \\
+Quadtree + CNN & 0.490 & 6421.7 \\
+Quadtree + ViT & 0.250 & 34886.9 \\
+Sliding Window CNN (64/32) & 0.474 & 7742.4 \\
+Sliding Window CNN (128/64) & 0.476 & 7605.5 \\
+Sliding Window CNN (128/128) & 0.488 & 7568.2 \\
+Sliding Window CNN (256/128) & 0.459 & 7573.1 \\
+Sliding Window ViT (64/32) & 0.250 & 9141.4 \\
+\hline
+\end{tabular}
+\end{table}
+
+Se observa que el modelo Swin estándar obtiene el mejor compromiso entre desempeño y costo computacional. Los enfoques jerárquicos y por ventanas presentan un rendimiento inferior, con un costo computacional considerablemente mayor, especialmente al emplear clasificadores basados en transformers.
+
+\subsection{Resultados con aumentación combinada (2 geométricas, 2 fotométricas, 1 SEM)}
+
+La Tabla~\ref{tab:results_combined_2geo} resume los resultados al aplicar una estrategia de aumentación combinada moderada.
+
+\begin{table}[ht]
+\centering
+\caption{Resultados con aumentación combinada (2G, 2F, 1SEM, $\times$2)}
+\label{tab:results_combined_2geo}
+\begin{tabular}{lcc}
+\hline
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Tiempo (s)} \\
+\hline
+ViT estándar & 0.565 & 2997.8 \\
+Swin estándar & \textbf{0.750} & \textbf{2564.0} \\
+ViT grande & 0.399 & 6924.9 \\
+Swin grande & 0.727 & 7675.0 \\
+\hline
+\end{tabular}
+\end{table}
+
+La aumentación beneficia de forma clara al Swin Transformer, especialmente en su variante estándar, mientras que los modelos ViT grandes muestran una degradación del desempeño, sugiriendo una relación desfavorable entre complejidad y tamaño efectivo del dataset.
+
+\subsection{Resultados con aumentación combinada (3 geométricas, 1 fotométrica, 1 SEM)}
+
+Finalmente, la Tabla~\ref{tab:results_combined_3geo} presenta los resultados con una estrategia de aumentación geométrica más agresiva.
+
+\begin{table}[ht]
+\centering
+\caption{Resultados con aumentación combinada (3G, 1F, 1SEM, $\times$2)}
+\label{tab:results_combined_3geo}
+\begin{tabular}{lcc}
+\hline
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Tiempo (s)} \\
+\hline
+ViT estándar & 0.574 & 3014.5 \\
+Swin estándar & \textbf{0.750} & \textbf{2575.2} \\
+ViT grande & 0.416 & 6930.9 \\
+Swin grande & 0.459 & 7697.5 \\
+\hline
+\end{tabular}
+\end{table}
+
+En este escenario, el Swin estándar mantiene un desempeño estable y elevado, mientras que el Swin grande sufre una degradación significativa, lo que refuerza la hipótesis de sobreajuste bajo restricciones de datos y cómputo.
+
+En conjunto, los resultados indican que los modelos Swin Transformer de complejidad moderada ofrecen el mejor equilibrio entre capacidad de representación, robustez frente a aumentación y eficiencia computacional dentro del contexto evaluado.
 
 \section{Conclusiones}
 % - Resumen de hallazgos principales
