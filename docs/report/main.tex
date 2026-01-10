@@ -22,8 +22,9 @@
 \usepackage[spanish]{babel}  % activa idioma español
 \usepackage{titlesec}
 \setcounter{secnumdepth}{5}
-
-
+\addto\captionsspanish{%
+  \renewcommand{\tablename}{Tabla}%
+}
 
 % *** MATH PACKAGES ***
 \usepackage{amsmath}
@@ -119,9 +120,9 @@
 % IEEE, IEEEtran, journal, \LaTeX, paper, template.
 % end{IEEEkeywords}
 
-\begin{abstract}
-Se presenta un enfoque sistemático para la detección de zonas frágiles y dúctiles en imágenes obtenidas mediante microscopía electrónica de barrido (SEM), un problema clave en la caracterización de fracturas. Para abordar la selección del modelo óptimo, se implementó un pipeline de AutoML ligero que permite la experimentación ágil con modelos basados en transformers y estrategias de segmentación jerárquica. La viabilidad de estas estrategias se evalúa bajo un marco experimental riguroso que considera explícitamente las limitaciones computacionales y la escasez de datos etiquetados. Los resultados evidencian cómo las técnicas de aumentación de datos y la transferencia de aprendizaje impactan en la calidad de la segmentación, ofreciendo una solución efectiva para el análisis automatizado de materiales.
-\end{abstract}
+% \begin{abstract}
+% Se presenta un enfoque sistemático para la detección de zonas frágiles y dúctiles en imágenes obtenidas mediante microscopía electrónica de barrido (SEM), un problema clave en la caracterización de fracturas. Para abordar la selección del modelo óptimo, se implementó un pipeline de AutoML ligero que permite la experimentación ágil con modelos basados en transformers y estrategias de segmentación jerárquica. La viabilidad de estas estrategias se evalúa bajo un marco experimental riguroso que considera explícitamente las limitaciones computacionales y la escasez de datos etiquetados. Los resultados evidencian cómo las técnicas de aumentación de datos y la transferencia de aprendizaje impactan en la calidad de la segmentación, ofreciendo una solución efectiva para el análisis automatizado de materiales.
+% \end{abstract}
 
 \section{Introducción}
 La caracterización de los mecanismos de fractura en materiales es un problema central en la ciencia e ingeniería de materiales, debido a su impacto directo en la evaluación del desempeño mecánico y la confiabilidad estructural. En particular, la identificación de zonas asociadas a comportamientos frágiles y dúctiles a partir de microestructuras proporciona información clave para el análisis del fallo y el diseño de materiales.
@@ -570,7 +571,7 @@ Se implementaron métodos compuestos que permiten combinar varias aumentaciones 
 
 Estas estrategias permiten generar un dataset enriquecido sin comprometer la coherencia entre imágenes y máscaras.
 
-\subsection{Métricas de Evaluación}
+\section{Métricas de Evaluación}
 La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular, permitiendo calcular múltiples métricas a partir de una representación estándar de las predicciones y las máscaras de referencia.
 
 Para cada imagen del conjunto de validación, el modelo de segmentación genera una máscara predicha, la cual se empareja con su máscara real correspondiente, generando pares de comparación $(\hat M,M)$.
@@ -579,7 +580,7 @@ Estos pares son procesados sistemáticamente para calcular métricas agregadas q
 
 La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel. Para una clase dada, cada píxel de la máscara predicha se compara con la máscara real y se clasifica como verdadero positivo (TP), falso positivo (FP), falso negativo (FN) o verdadero negativo (TN). Los evaluadores acumulan estos conteos a lo largo de todas las imágenes antes de calcular la métrica final.
 
-\subsubsection{Intersección sobre Unión (IoU) y coeficiente Dice}
+\subsection{Intersección sobre Unión (IoU) y coeficiente Dice}
 % - Fórmula
 % - Variantes: por clase, promedio macro, promedio ponderado
 El \emph{Intersection over Union} (IoU) y el coeficiente \emph{Dice} son las métricas principales para cuantificar el solapamiento entre predicción y referencia.
@@ -590,17 +591,71 @@ Estas métricas se calculan de tres maneras complementarias:
 (ii) promedio macro, donde se promedia el valor de cada clase sin ponderación, ofreciendo una visión balanceada incluso ante desbalances severos;
 (iii) promedio ponderado, donde cada clase contribuye según su frecuencia en el conjunto de datos, reflejando el desempeño global pero siendo sensible a clases dominantes como el fondo.
 
-\subsubsection{Precisión y Recall}
+\subsection{Precisión y Recall}
 % - Definiciones
 % - Interpretación en contexto de segmentación
 La precisión y el recall permiten un diagnóstico más fino de los errores del modelo. La precisión mide la confiabilidad de las predicciones positivas, mientras que el recall cuantifica la capacidad del modelo para detectar todos los píxeles relevantes de una clase. Al igual que en IoU y Dice, se reportan promedios macro para analizar el comportamiento medio del modelo en todas las clases, independientemente de su tamaño relativo.
 
-\subsubsection{Cohesión de la máscara}
-Además de las métricas clásicas basadas en coincidencia píxel a píxel, se incorpora una métrica estructural denominada Mask Cohesion. Esta se implementa mediante un autoencoder convolucional entrenado exclusivamente con máscaras reales del conjunto de datos. El autoencoder aprende una representación compacta de las estructuras válidas presentes en las segmentaciones de referencia.
+\subsection{Cohesión de la Máscara}
 
-Durante la evaluación, se utilizan las representaciones del espacio latente generadas por el autoencoder en lugar de la reconstrucción directa. Se entrena un clasificador One-Class SVM sobre los embeddings de las máscaras reales para aprender la distribución de estructuras topológicamente válidas. La métrica reportada corresponde a la proporción de máscaras predichas que son identificadas como ``inliers'' por este modelo. Esto permite cuantificar cuántas predicciones mantienen una coherencia estructural indistinguible de las máscaras de referencia, penalizando aquellas con artefactos o formas anómalas. Esta métrica complementa a IoU y Dice al evaluar la calidad global de la forma más allá de la coincidencia píxel a píxel.
+La métrica \emph{Mask Cohesion} no es un indicador estándar como IoU o \emph{Accuracy}, sino un criterio personalizado diseñado para evaluar la plausibilidad geométrica de las máscaras segmentadas, que cuantifica cuánto de la máscara predicha se asemeja a la mascara real.
+
+En lugar de comparar píxel a píxel, esta métrica cuantifica la consistencia estructural global de las predicciones:
+
+\begin{enumerate}
+    \item Representación de forma: Se utiliza un Autoencoder que codifica cada máscara de $512\times512$ píxeles en un vector latente de tres dimensiones, capturando las características estructurales esenciales.
+    
+    \item Detección de anomalías: A partir de las máscaras de referencia, se construye un ``cluster'' de formas válidas en el espacio latente. Un \emph{One-Class SVM} se entrena para delimitar este espacio, identificando inliers (formas plausibles) y outliers (formas anómalas).
+    
+    \item Cálculo de la métrica: Cada máscara predicha se codifica y se clasifica mediante el SVM. La \emph{Mask Cohesion} se define como la fracción de máscaras predichas clasificadas como inliers:
+    \[
+        \text{Mask Cohesion} = \frac{\text{Número de máscaras inlier}}{\text{Número total de máscaras predichas}}.
+    \]
+\end{enumerate}
+
+Un valor alto de \emph{Mask Cohesion} indica que la mayoría de las máscaras predichas poseen una geometría coherente con las máscaras reales, incluso si no son exactas a nivel de píxel. Valores bajos reflejan máscaras fragmentadas, ruidosas o estructuralmente inconsistentes.
+
 
 Este conjunto de métricas proporciona una evaluación integral del desempeño, abarcando exactitud cuantitativa, balance entre clases y calidad estructural de las segmentaciones producidas.
+
+
+\section{Criterio de Selección de Modelo y Justificación del F1-score}
+
+La selección del modelo óptimo se fundamenta en una métrica que capture adecuadamente el balance entre precisión y exhaustividad en cada clase, particularmente ante el desbalance inherente del dataset. Para este propósito, se adopta el \emph{F1-score macro} como criterio principal de comparación entre modelos.
+
+\subsubsection{Equivalencia entre F1-score y coeficiente Dice}
+
+El coeficiente Dice y el F1-score son métricamente equivalentes cuando se interpretan en el contexto de segmentación binaria. Formalmente, dado un conjunto de verdaderos positivos $\text{TP}$, falsos positivos $\text{FP}$ y falsos negativos $\text{FN}$, ambas métricas se definen como:
+
+\begin{equation}
+    \text{Dice} = \frac{2 \cdot |A \cap B|}{|A| + |B|} = \frac{2 \cdot \text{TP}}{2 \cdot \text{TP} + \text{FP} + \text{FN}} = F_1
+\end{equation}
+
+donde $A$ representa el conjunto de píxeles predichos como positivos y $B$ el conjunto de píxeles realmente positivos (ground truth). Esta equivalencia permite interpretar el F1-score como una medida de solapamiento entre la predicción y la referencia, lo cual es precisamente el objetivo en tareas de segmentación semántica.
+
+\subsubsection{Justificación del promedio macro}
+
+Dado el desbalance significativo entre clases (73 imágenes con predominio dúctil frente a 21 con predominio frágil), el uso del promedio \emph{macro} resulta fundamental. A diferencia del promedio ponderado, el \emph{F1-score macro} calcula el F1 de forma independiente para cada clase y luego promedia sin considerar la frecuencia relativa:
+
+\begin{equation}
+    F_1^{\text{macro}} = \frac{1}{C} \sum_{c=1}^{C} F_1^{(c)}
+\end{equation}
+
+Este enfoque garantiza que el desempeño en la clase minoritaria (frágil) tenga igual peso que el de la clase mayoritaria (dúctil), evitando que un modelo que simplemente prediga la clase dominante obtenga puntuaciones artificialmente elevadas. Un modelo con alto $F_1^{\text{macro}}$ debe necesariamente desempeñarse bien en \emph{todas} las clases, lo cual es el comportamiento deseado para la caracterización de fracturas.
+
+\subsubsection{Proceso de selección basado en validación cruzada}
+
+El criterio de selección se aplica dentro del framework de experimentación automatizada mediante el siguiente protocolo:
+
+\begin{enumerate}
+    \item Para cada configuración (modelo + estrategia de aumentación), se ejecuta validación cruzada con $k=5$ folds.
+    \item En cada fold, se calcula el $F_1^{\text{macro}}$ sobre el conjunto de validación.
+    \item El desempeño final de cada configuración corresponde al promedio de los 5 valores obtenidos.
+    \item La configuración con mayor $F_1^{\text{macro}}$ promedio se selecciona como (modelo + estrategia de aumentación) óptimo.
+\end{enumerate}
+
+Este protocolo asegura que la selección no esté sesgada por particiones particulares del dataset y que el modelo elegido exhiba un desempeño robusto y generalizable. Las métricas complementarias (accuracy, mask cohesion) se reportan para proporcionar una visión holística, pero no participan directamente en el criterio de selección.
+
 
 % \subsection{Diseño del Framework AutoML}
 % - Arquitectura de nodos (DataAugmentatorNode, ModelNode, EvaluatorNode)
@@ -716,6 +771,27 @@ En conjunto, los resultados indican que los modelos Swin Transformer de compleji
 Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
 
 
+\subsection{Impacto de la Aumentación en Swin Transformer}
+
+Para aislar el efecto de la aumentación de datos en el rendimiento del mejor modelo identificado (Swin Transformer Estándar), se consolidan los resultados obtenidos bajo las distintas estrategias evaluadas en la Tabla~\ref{tab:swin_augmentation_comparison}.
+
+\begin{table}[h]
+\centering
+\caption{Comparativa de Swin Transformer bajo distintas estrategias de aumentación}
+\label{tab:swin_augmentation_comparison}
+\begin{tabular}{lccc}
+\hline
+\textbf{Estrategia} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} \\ 
+\hline
+Identidad (Sin Aumentación) & 0.7033 & 0.7384 & 0.5625 \\
+Combinada 1 (2G, 2F, 1SEM) & \textbf{0.7500} & \textbf{0.7771} & 0.4783 \\
+Combinada 2 (3G, 1F, 1SEM) & 0.7495 & 0.7738 & 0.5409 \\
+\hline
+\end{tabular}
+\end{table}
+
+Se observa una mejora consistente y significativa al introducir técnicas de aumentación. El F1-score experimenta un incremento de aproximadamente 5 puntos porcentuales (de 0.7033 a 0.7500), lo que valida la hipótesis de que la diversidad sintética es crucial para compensar la escasez de datos etiquetados en este dominio. Además, el modelo mantiene un alto grado de cohesión en las máscaras, lo que sugiere que las transformaciones aplicadas no degradan la estructura topológica de las predicciones.
+
 
 \subsection{Análisis de Curvas de Aprendizaje}
 
@@ -736,22 +812,22 @@ Se observa un comportamiento interesante en los modelos grandes. El Swin Large (
 
 \subsubsection{Análisis de Sobreajuste en Modelos Swin}
 
-Un fenómeno particular se observó en el escenario de aumentación combinada \texttt{Combined\_2Geo\_2Photo\_1SEM\_x2}, comparando el Swin Standard y el Swin Large. La Figura~\ref{fig:overfitting_analysis} ilustra las curvas de \emph{Training Loss} vs. \emph{Validation Loss} para ambos casos.
+Un fenómeno particular se observó en el escenario de aumentación combinada \path{Combined_2Geo_2Photo_1SEM_x2}, comparando el Swin Standard y el Swin Large. La Figura~\ref{fig:overfitting_analysis} ilustra las curvas de \emph{Training Loss} vs. \emph{Validation Loss} para ambos casos.
 
 \begin{itemize}
-    \item \textbf{Swin Standard (Fig.~\ref{fig:swin_std_tv}):} Este modelo muestra un comportamiento clásico de \emph{overfitting} a partir de cierta etapa. El \emph{Training Loss} (línea azul) disminuye drásticamente, convergiendo cada vez mas a cero, mientras que el \emph{Validation Loss} (línea naranja) se estabiliza y comienza a divergir ligeramente o estancarse. Esto indica que el modelo, con su capacidad moderada, es capaz de memorizar eficazmente el conjunto de entrenamiento aumentado, pero esta memorización deja de traducirse en mejoras de generalización.
+    \item Swin Standard (Fig.~\ref{fig:swin_std_tv}): Este modelo muestra un comportamiento clásico de \emph{overfitting} a partir de cierta etapa. El \emph{Training Loss} (línea azul) disminuye drásticamente, convergiendo cada vez mas a cero, mientras que el \emph{Validation Loss} (línea naranja) se estabiliza y comienza a divergir ligeramente o estancarse. Esto indica que el modelo, con su capacidad moderada, es capaz de memorizar eficazmente el conjunto de entrenamiento aumentado, pero esta memorización deja de traducirse en mejoras de generalización.
     
-    \item \textbf{Swin Large (Fig.~\ref{fig:swin_large_tv}):} En contraste, el modelo grande muestra una dinámica diferente. Su \emph{Training Loss} no disminuye tan abruptamente como en el modelo estándar. Esto sugiere que el modelo más grande podría beneficiarse más de un entrenamiento más prolongado y de un volumen de datos aún mayor para desbloquear su potencial, mientras que el modelo estándar alcanza su techo de rendimiento (y comienza a sobreajustarse) más temprano.
+    \item Swin Large (Fig.~\ref{fig:swin_large_tv}): En contraste, el modelo grande muestra una dinámica diferente. Su \emph{Training Loss} no disminuye tan abruptamente como en el modelo estándar. Esto sugiere que el modelo más grande podría beneficiarse más de un entrenamiento más prolongado y de un volumen de datos aún mayor para desbloquear su potencial, mientras que el modelo estándar alcanza su techo de rendimiento (y comienza a sobreajustarse) más temprano.
 \end{itemize}
 
 \begin{figure}[H]
     \centering
     \subfloat[Swin Standard: Train vs Val]{
-        \includegraphics[width=0.9\linewidth]{train_val_swin_std.png}
+        \includegraphics[width=0.7\linewidth]{train_val_swin_std.png}
         \label{fig:swin_std_tv}}
     \\
     \subfloat[Swin Large: Train vs Val]{
-        \includegraphics[width=0.9\linewidth]{train_val_swin_large.png}
+        \includegraphics[width=0.7\linewidth]{train_val_swin_large.png}
         \label{fig:swin_large_tv}}
     \caption{Análisis de curvas de entrenamiento y validación bajo aumentación combinada. Se observa un \emph{overfitting} más marcado en la caída del \emph{Training Loss} del modelo estándar en comparación con el modelo grande.}
     \label{fig:overfitting_analysis}
@@ -799,15 +875,49 @@ La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por e
 
 El análisis detallado de estas imágenes revela que el modelo ha logrado aprender no solo la textura local, sino la topología de las fracturas. Se observa una notable precisión en la delimitación de las zonas dúctiles frente a las áreas frágiles, respetando los bordes irregulares característicos de estas morfologías. Incluso en regiones donde el contraste es bajo o la transición es sutil, el modelo mantiene una coherencia estructural alta, evitando la fragmentación excesiva y demostrando una generalización robusta ante datos no vistos.
 
+\subsection{Posibles Sesgos}
+
+La presente sección analiza los posibles sesgos presentes en los datos y su impacto sobre los modelos.
+
+El dataset de segmentación cuenta con 94 imágenes, de las cuales 73 son mayormente dúctiles y 21 mayormente frágiles. Esta distribución desigual puede inducir un sesgo hacia la predicción de la clase dúctil, afectando la generalización de los modelos.
+
+Los modelos jerárquicos o basados en ventanas deslizantes utilizan clasificadores entrenados en datasets externos, lo que puede introducir sesgos adicionales en la segmentación final, condicionando los resultados a la naturaleza de esos datos auxiliares.
+
+Adicionalmente, las máscaras de \emph{ground truth} no fueron creadas por usuarios expertos, lo que puede introducir inconsistencias o errores de etiquetado. Esto limita la fidelidad de las métricas de evaluación y puede sesgar el entrenamiento hacia patrones no totalmente representativos de la realidad.
+
+Estos factores deben considerarse al interpretar los resultados y al extrapolar las conclusiones a otros conjuntos de imágenes o condiciones experimentales.
+
+
+\section{Limitaciones}
+
+El presente estudio está sujeto a varias limitaciones inherentes tanto a las características del dataset como a las restricciones computacionales del entorno de entrenamiento.
+
+El tamaño reducido del dataset de segmentación (94 imágenes SEM) constituye una limitación fundamental. Aun cuando se aplicaron estrategias de aumentación para incrementar la diversidad efectiva de los datos, estas transformaciones no sustituyen completamente la variabilidad morfológica y topológica que se obtendría con un mayor número de muestras reales. Adicionalmente, el desbalance entre clases —con una predominancia de regiones dúctiles frente a frágiles— introduce un sesgo estructural en el aprendizaje.
+
+La resolución variable de las imágenes SEM y la necesidad de redimensionamiento para ciertos análisis introducen una posible pérdida de información espacial, lo que puede afectar la delimitación precisa de bordes complejos en las máscaras de segmentación.
+
+En cuanto al aspecto computacional, los experimentos estuvieron condicionados por el entorno de Kaggle, con acceso a una GPU NVIDIA Tesla P100. Esta restricción impuso límites en la exploración de hiperparámetros, el tamaño de batch y la duración del entrenamiento. En consecuencia, no fue posible realizar búsquedas exhaustivas ni entrenamientos prolongados que podrían arrojar mejores resultados
+
+Asimismo, las limitaciones de memoria y tiempo de ejecución restringieron la evaluación sistemática de múltiples configuraciones de aumentación para los enfoques basados en Quadtree y Sliding Window, los cuales presentan un costo computacional significativamente superior debido a su naturaleza jerárquica o exhaustiva.
+
+Estas limitaciones deben considerarse al interpretar los resultados y motivan futuras extensiones del trabajo orientadas a la incorporación de datasets más extensos, recursos computacionales más robustos y estrategias de entrenamiento más exhaustivas.
+
 
 \section{Conclusiones}
-% - Resumen de hallazgos principales
-% - Mejor estrategia de segmentación
-% - Limitaciones del trabajo
-% - Trabajo futuro
+
+En este trabajo se evaluaron distintas arquitecturas y estrategias de segmentación aplicadas a imágenes SEM bajo un escenario de datos limitados, analizando tanto el desempeño cuantitativo como el comportamiento cualitativo de los modelos.
+
+Los resultados muestran de forma consistente que el \emph{Swin Transformer} en su configuración estándar ofrece el mejor equilibrio entre capacidad de representación, robustez y eficiencia computacional. Este modelo alcanza los valores más altos de \emph{F1-score} y \emph{accuracy} en todos los escenarios evaluados, manteniendo además una adecuada cohesión de las máscaras segmentadas.
+
+Las estrategias de aumentación de datos resultan determinantes para mejorar la generalización del modelo. En particular, las configuraciones combinadas permiten incrementar el \emph{F1-score} en aproximadamente cinco puntos porcentuales respecto al entrenamiento sin aumentación, sin comprometer la coherencia estructural de las predicciones. Este efecto confirma la importancia de la diversidad sintética para compensar la escasez de muestras etiquetadas en este dominio.
+
+Los enfoques alternativos basados en \emph{Quadtree} y \emph{Sliding Windows} muestran un rendimiento inferior y un costo computacional significativamente mayor, especialmente cuando emplean clasificadores basados en transformers, lo que limita su viabilidad práctica frente a modelos de segmentación end-to-end.
+
+El análisis de curvas de aprendizaje y de escalabilidad con respecto al volumen de datos indica que el Swin Transformer estándar no ha saturado su capacidad de aprendizaje y se beneficiaría de conjuntos de datos más extensos, reforzando la relevancia de la aumentación y la recolección de nuevas muestras.
+
+En conjunto, los resultados posicionan al Swin Transformer de complejidad moderada, entrenado con una estrategia de aumentación adecuada, como la opción más efectiva para la segmentación de zonas frágiles y dúctiles en imágenes SEM dentro del contexto evaluado. Como trabajo futuro, se plantea la incorporación de datasets más amplios y la exploración de esquemas híbridos que integren información multiescala de forma más eficiente.
 
 \bibliographystyle{ieeetr}
 \bibliography{references}
-
 
 \end{document}
