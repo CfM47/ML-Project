@@ -167,7 +167,11 @@ def run_final_training(
     model, training_history = _train_final_model(train_dataset, config)
 
     # Evaluate on test set
-    test_metrics, test_mask_pairs = _evaluate_on_test(model, test_dataset)
+    test_metrics, test_mask_pairs = _evaluate_on_test(
+        model,
+        test_dataset,
+        train_dataset,
+    )
 
     # Save model
     model_path = config.output_dir / "model.pt"
@@ -294,8 +298,8 @@ def _train_fold(
     # Train model
     train_result = model.train(aug_train, validation_dataset=val_dataset)
 
-    # Evaluate on validation set
-    evaluator = create_evaluator(val_dataset)
+    # Evaluate on validation set (autoencoder trained on training set)
+    evaluator = create_evaluator(train_dataset)
     metrics, _ = evaluate_model(model, val_dataset, evaluator)
 
     fold_metrics = FoldMetrics(
@@ -347,13 +351,25 @@ def _train_final_model(
 def _evaluate_on_test(
     model: SwinModel,
     test_dataset: SegmentationDatasetInterface,
+    train_dataset: SegmentationDatasetInterface,
 ) -> Tuple[Dict[str, float], List[MaskPair]]:
-    """Evaluate trained model on test dataset (no augmentation)."""
+    """
+    Evaluate trained model on test dataset (no augmentation).
+
+    Args:
+        model: Trained SwinModel.
+        test_dataset: Test dataset to evaluate on.
+        train_dataset: Training dataset for Mask_Cohesion autoencoder reference.
+
+    Returns:
+        Tuple of (metrics_dict, mask_pairs).
+
+    """
     print("\n" + "=" * 60)
     print("Evaluating on test set")
     print("=" * 60)
 
-    evaluator = create_evaluator(test_dataset)
+    evaluator = create_evaluator(train_dataset)
     metrics, mask_pairs = evaluate_model(model, test_dataset, evaluator)
 
     print("\nTest Metrics:")
