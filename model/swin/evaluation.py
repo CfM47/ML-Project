@@ -7,18 +7,12 @@ from auto_ml.implementations.evaluators import (
     AutoencoderMaskEvaluator,
     DiceClass0Evaluator,
     DiceClass1Evaluator,
-    DiceMacroAverageEvaluator,
-    DiceWeightedAverageEvaluator,
     IoUClass0Evaluator,
     IoUClass1Evaluator,
-    IoUMacroAverageEvaluator,
-    IoUWeightedAverageEvaluator,
     PrecisionClass0Evaluator,
     PrecisionClass1Evaluator,
-    PrecisionMacroAverageEvaluator,
     RecallClass0Evaluator,
     RecallClass1Evaluator,
-    RecallMacroAverageEvaluator,
 )
 from auto_ml.implementations.nodes import EvaluatorNode
 from auto_ml.implementations.segmentators.swin import SwinModel
@@ -50,21 +44,15 @@ def create_evaluator(dataset: SegmentationDatasetInterface) -> EvaluatorNode:
         # IoU Metrics (binary: Class0 and Class1 only)
         "IoU_Class0": IoUClass0Evaluator(),
         "IoU_Class1": IoUClass1Evaluator(),
-        "IoU_Macro": IoUMacroAverageEvaluator(),
-        "IoU_Weighted": IoUWeightedAverageEvaluator(),
         # Dice Metrics (binary: Class0 and Class1 only)
         "Dice_Class0": DiceClass0Evaluator(),
         "Dice_Class1": DiceClass1Evaluator(),
-        "Dice_Macro": DiceMacroAverageEvaluator(),
-        "Dice_Weighted": DiceWeightedAverageEvaluator(),
         # Precision Metrics (binary: Class0 and Class1 only)
         "Precision_Class0": PrecisionClass0Evaluator(),
         "Precision_Class1": PrecisionClass1Evaluator(),
-        "Precision_Macro": PrecisionMacroAverageEvaluator(),
         # Recall Metrics (binary: Class0 and Class1 only)
         "Recall_Class0": RecallClass0Evaluator(),
         "Recall_Class1": RecallClass1Evaluator(),
-        "Recall_Macro": RecallMacroAverageEvaluator(),
     }
     return EvaluatorNode(evaluators=evaluators, name="SwinValidationEvaluator")
 
@@ -101,7 +89,35 @@ def evaluate_model(
         else:
             metrics[metric_name] = float(values)
 
+    # Compute F1 scores from Precision and Recall
+    _add_f1_metrics(metrics)
+
     return metrics, mask_pairs
+
+
+def _add_f1_metrics(metrics: Dict[str, float]) -> None:
+    """
+    Compute F1 scores from Precision and Recall and add them to metrics dict.
+
+    Formula: F1 = 2 * (Precision * Recall) / (Precision + Recall)
+
+    Args:
+        metrics: Metrics dictionary to update in-place.
+
+    """
+    for class_id in [0, 1]:
+        precision_key = f"Precision_Class{class_id}"
+        recall_key = f"Recall_Class{class_id}"
+        f1_key = f"F1_Class{class_id}"
+
+        if precision_key in metrics and recall_key in metrics:
+            precision = metrics[precision_key]
+            recall = metrics[recall_key]
+            denominator = precision + recall
+            if denominator > 0:
+                metrics[f1_key] = 2 * (precision * recall) / denominator
+            else:
+                metrics[f1_key] = 0.0
 
 
 def extract_metrics_from_evaluation(
