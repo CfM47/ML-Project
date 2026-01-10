@@ -4,28 +4,69 @@ from typing import Any, Dict, List, Tuple
 
 from auto_ml.implementations.evaluators import (
     AccuracyEvaluator,
+    AutoencoderMaskEvaluator,
+    DiceClass0Evaluator,
+    DiceClass1Evaluator,
     DiceMacroAverageEvaluator,
+    DiceWeightedAverageEvaluator,
+    IoUClass0Evaluator,
+    IoUClass1Evaluator,
+    IoUMacroAverageEvaluator,
+    IoUWeightedAverageEvaluator,
+    PrecisionClass0Evaluator,
+    PrecisionClass1Evaluator,
+    PrecisionMacroAverageEvaluator,
+    RecallClass0Evaluator,
+    RecallClass1Evaluator,
+    RecallMacroAverageEvaluator,
 )
 from auto_ml.implementations.nodes import EvaluatorNode
 from auto_ml.implementations.segmentators.swin import SwinModel
 from auto_ml.interfaces import MaskPair, SegmentationDatasetInterface
 
 
-def create_evaluator() -> EvaluatorNode:
+def create_evaluator(dataset: SegmentationDatasetInterface) -> EvaluatorNode:
     """
-    Create evaluator with Dice (F1) and Accuracy metrics only.
+    Create evaluator with all available metrics for binary segmentation.
+
+    Args:
+        dataset: Dataset used for training the Mask_Cohesion autoencoder evaluator.
 
     Returns:
-        Configured EvaluatorNode.
+        Configured EvaluatorNode with all metrics.
 
     """
-    return EvaluatorNode(
-        evaluators={
-            "Dice_Macro": DiceMacroAverageEvaluator(),
-            "Accuracy": AccuracyEvaluator(),
-        },
-        name="SwinValidationEvaluator",
-    )
+    evaluators = {
+        # General
+        "Accuracy": AccuracyEvaluator(),
+        # Autoencoder (requires training on reference masks)
+        "Mask_Cohesion": AutoencoderMaskEvaluator(
+            reference_masks=dataset.masks,
+            latent_dim=8,
+            epochs=40,
+            nu=0.5,
+            device="auto",
+        ),
+        # IoU Metrics (binary: Class0 and Class1 only)
+        "IoU_Class0": IoUClass0Evaluator(),
+        "IoU_Class1": IoUClass1Evaluator(),
+        "IoU_Macro": IoUMacroAverageEvaluator(),
+        "IoU_Weighted": IoUWeightedAverageEvaluator(),
+        # Dice Metrics (binary: Class0 and Class1 only)
+        "Dice_Class0": DiceClass0Evaluator(),
+        "Dice_Class1": DiceClass1Evaluator(),
+        "Dice_Macro": DiceMacroAverageEvaluator(),
+        "Dice_Weighted": DiceWeightedAverageEvaluator(),
+        # Precision Metrics (binary: Class0 and Class1 only)
+        "Precision_Class0": PrecisionClass0Evaluator(),
+        "Precision_Class1": PrecisionClass1Evaluator(),
+        "Precision_Macro": PrecisionMacroAverageEvaluator(),
+        # Recall Metrics (binary: Class0 and Class1 only)
+        "Recall_Class0": RecallClass0Evaluator(),
+        "Recall_Class1": RecallClass1Evaluator(),
+        "Recall_Macro": RecallMacroAverageEvaluator(),
+    }
+    return EvaluatorNode(evaluators=evaluators, name="SwinValidationEvaluator")
 
 
 def evaluate_model(

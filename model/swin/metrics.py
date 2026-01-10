@@ -68,9 +68,34 @@ class FoldMetrics:
     fold: int
     train_history: List[Dict[str, float]] = field(default_factory=list)
 
-    # Final metrics from evaluator
-    dice_macro: float = 0.0
-    accuracy: float = 0.0
+    # All metrics from evaluator
+    metrics: Dict[str, float] = field(default_factory=dict)
+
+    @property
+    def dice_macro(self) -> float:
+        """
+        Return Dice macro metric for backward compatibility.
+
+        Raises:
+            KeyError: If Dice_Macro metric not found.
+
+        """
+        if "Dice_Macro" not in self.metrics:
+            raise KeyError("Metric 'Dice_Macro' not found in fold metrics")
+        return self.metrics["Dice_Macro"]
+
+    @property
+    def accuracy(self) -> float:
+        """
+        Return Accuracy metric for backward compatibility.
+
+        Raises:
+            KeyError: If Accuracy metric not found.
+
+        """
+        if "Accuracy" not in self.metrics:
+            raise KeyError("Metric 'Accuracy' not found in fold metrics")
+        return self.metrics["Accuracy"]
 
     @property
     def final_train_loss(self) -> float:
@@ -104,37 +129,96 @@ class PercentageMetrics:
     percentage: int
     fold_metrics: List[FoldMetrics] = field(default_factory=list)
 
-    # --- Dice Macro (F1) ---
+    # --- Dynamic Metric Access ---
+
+    def get_metric_mean(self, metric_name: str) -> float:
+        """
+        Calculate mean of a specific metric across folds.
+
+        Args:
+            metric_name: Name of the metric (e.g., "Dice_Macro", "IoU_Class1").
+
+        Returns:
+            Mean value across folds.
+
+        Raises:
+            ValueError: If no fold metrics available.
+            KeyError: If metric not found in any fold.
+
+        """
+        if not self.fold_metrics:
+            raise ValueError("No fold metrics available")
+        for fm in self.fold_metrics:
+            if metric_name not in fm.metrics:
+                raise KeyError(
+                    f"Metric '{metric_name}' not found in fold {fm.fold} metrics",
+                )
+        values = [fm.metrics[metric_name] for fm in self.fold_metrics]
+        return float(np.mean(values))
+
+    def get_metric_std(self, metric_name: str) -> float:
+        """
+        Calculate std of a specific metric across folds.
+
+        Args:
+            metric_name: Name of the metric (e.g., "Dice_Macro", "IoU_Class1").
+
+        Returns:
+            Standard deviation across folds.
+
+        Raises:
+            ValueError: If no fold metrics available.
+            KeyError: If metric not found in any fold.
+
+        """
+        if not self.fold_metrics:
+            raise ValueError("No fold metrics available")
+        for fm in self.fold_metrics:
+            if metric_name not in fm.metrics:
+                raise KeyError(
+                    f"Metric '{metric_name}' not found in fold {fm.fold} metrics",
+                )
+        values = [fm.metrics[metric_name] for fm in self.fold_metrics]
+        return float(np.std(values))
+
+    def get_all_metric_names(self) -> List[str]:
+        """
+        Return all metric names available in the fold metrics.
+
+        Returns:
+            List of metric names.
+
+        Raises:
+            ValueError: If no fold metrics available.
+
+        """
+        if not self.fold_metrics:
+            raise ValueError("No fold metrics available")
+        return list(self.fold_metrics[0].metrics.keys())
+
+    # --- Dice Macro (F1) - Backward Compatibility ---
 
     @property
     def mean_dice_macro(self) -> float:
         """Calculate mean Dice macro across folds."""
-        if not self.fold_metrics:
-            return 0.0
-        return float(np.mean([fm.dice_macro for fm in self.fold_metrics]))
+        return self.get_metric_mean("Dice_Macro")
 
     @property
     def std_dice_macro(self) -> float:
         """Calculate std of Dice macro across folds."""
-        if not self.fold_metrics:
-            return 0.0
-        return float(np.std([fm.dice_macro for fm in self.fold_metrics]))
+        return self.get_metric_std("Dice_Macro")
 
-    # --- Accuracy ---
+    # --- Accuracy - Backward Compatibility ---
 
     @property
     def mean_accuracy(self) -> float:
         """Calculate mean accuracy across folds."""
-        if not self.fold_metrics:
-            return 0.0
-        return float(np.mean([fm.accuracy for fm in self.fold_metrics]))
+        return self.get_metric_mean("Accuracy")
 
     @property
     def std_accuracy(self) -> float:
         """Calculate std of accuracy across folds."""
-        if not self.fold_metrics:
-            return 0.0
-        return float(np.std([fm.accuracy for fm in self.fold_metrics]))
+        return self.get_metric_std("Accuracy")
 
     # --- Training Loss ---
 

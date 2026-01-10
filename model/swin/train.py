@@ -221,14 +221,10 @@ def _run_validation_loop(
         best_models_by_percentage[percentage] = best_model
 
         print(f"\n  {percentage}% Summary:")
-        print(
-            f"    Mean F1 (Dice): {pct_metrics.mean_dice_macro:.4f} "
-            f"± {pct_metrics.std_dice_macro:.4f}",
-        )
-        print(
-            f"    Mean Accuracy: {pct_metrics.mean_accuracy:.4f} "
-            f"± {pct_metrics.std_accuracy:.4f}",
-        )
+        for metric_name in pct_metrics.get_all_metric_names():
+            mean_val = pct_metrics.get_metric_mean(metric_name)
+            std_val = pct_metrics.get_metric_std(metric_name)
+            print(f"    {metric_name}: {mean_val:.4f} ± {std_val:.4f}")
 
     return all_metrics, best_models_by_percentage
 
@@ -262,10 +258,9 @@ def _run_percentage_experiment(
             best_dice = fold_metrics.dice_macro
             best_model = model
 
-        print(
-            f"    F1 (Dice): {fold_metrics.dice_macro:.4f}, "
-            f"Accuracy: {fold_metrics.accuracy:.4f}",
-        )
+        print(f"    Fold {fold + 1} Metrics:")
+        for metric_name, value in sorted(fold_metrics.metrics.items()):
+            print(f"      {metric_name}: {value:.4f}")
 
     # best_model is guaranteed to be set since we have at least one fold
     assert best_model is not None
@@ -300,14 +295,13 @@ def _train_fold(
     train_result = model.train(aug_train, validation_dataset=val_dataset)
 
     # Evaluate on validation set
-    evaluator = create_evaluator()
+    evaluator = create_evaluator(val_dataset)
     metrics, _ = evaluate_model(model, val_dataset, evaluator)
 
     fold_metrics = FoldMetrics(
         fold=fold,
         train_history=train_result.history,
-        dice_macro=metrics.get("Dice_Macro", 0.0),
-        accuracy=metrics.get("Accuracy", 0.0),
+        metrics=metrics,
     )
 
     return fold_metrics, model
@@ -359,11 +353,12 @@ def _evaluate_on_test(
     print("Evaluating on test set")
     print("=" * 60)
 
-    evaluator = create_evaluator()
+    evaluator = create_evaluator(test_dataset)
     metrics, mask_pairs = evaluate_model(model, test_dataset, evaluator)
 
-    print(f"Test F1 (Dice): {metrics.get('Dice_Macro', 0.0):.4f}")
-    print(f"Test Accuracy: {metrics.get('Accuracy', 0.0):.4f}")
+    print("\nTest Metrics:")
+    for metric_name, value in sorted(metrics.items()):
+        print(f"  {metric_name}: {value:.4f}")
 
     return metrics, mask_pairs
 
