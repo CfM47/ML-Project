@@ -1,0 +1,923 @@
+\documentclass[onecolumn, 12pt , journal]{IEEEtran}
+
+\ifCLASSINFOpdf
+\usepackage[pdftex]{graphicx}
+  % declare the path(s) where your graphic files are
+\graphicspath{{../pdf/}{../jpeg/}}
+  % and their extensions so you won't have to specify these with
+  % every instance of \includegraphics
+\DeclareGraphicsExtensions{.pdf,.jpeg,.png}
+\else
+  % or other class option (dvipsone, dvipdf, if not using dvips). graphicx
+  % will default to the driver specified in the system graphics.cfg if no
+  % driver is specified.
+  % \usepackage[dvips]{graphicx}
+  % declare the path(s) where your graphic files are
+  % \graphicspath{{../eps/}}
+  % and their extensions so you won't have to specify these with
+  % every instance of \includegraphics
+  % \DeclareGraphicsExtensions{.eps}
+\fi
+
+\usepackage[spanish]{babel}  % activa idioma español
+\usepackage{titlesec}
+\setcounter{secnumdepth}{5}
+\addto\captionsspanish{%
+  \renewcommand{\tablename}{Tabla}%
+}
+
+% *** MATH PACKAGES ***
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\interdisplaylinepenalty=2500
+% *** SPECIALIZED LIST PACKAGES ***
+\usepackage{algorithmic}
+% *** ALIGNMENT PACKAGES ***
+\usepackage{array}
+% *** SUBFIGURE PACKAGES ***
+\ifCLASSOPTIONcompsoc
+  \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\else
+  \usepackage[caption=false,font=footnotesize]{subfig}
+\fi
+% *** FLOAT PACKAGES ***
+%\usepackage{fixltx2e}
+%\usepackage{stfloats}
+%\usepackage{dblfloatfix}
+
+%\ifCLASSOPTIONcaptionsoff
+%  \usepackage[nomarkers]{endfloat}
+% \let\MYoriglatexcaption\caption
+% \renewcommand{\caption}[2][\relax]{\MYoriglatexcaption[#2]{#2}}
+%\fi
+%\let\MYorigsubfloat\subfloat
+%\renewcommand{\subfloat}[2][\relax]{\MYorigsubfloat[]{#2}}
+
+% *** PDF, URL AND HYPERLINK PACKAGES ***
+\usepackage{url}
+\usepackage{float}
+
+\usepackage{booktabs}
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+\hyphenation{maxi-mizar REINFORCE}
+
+\newtheorem{definition}{Definición}
+\newtheorem{theorem}{Teorema}
+\newtheorem{lemma}{Lema}
+\newtheorem{proposition}{Proposición}
+
+% Corolarios
+\newtheorem{corollary}{Corolario}
+
+% Subparagraph command
+% \newcommand{\subparagraph}[1]{\vspace{1em}\noindent\textbf{#1.}}
+
+\begin{document}
+%
+% paper title
+% Titles are generally capitalized except for words such as a, an, and, as,
+% at, but, by, for, in, nor, of, on, or, the, to and up, which are usually
+% not capitalized unless they are the first or last word of the title.
+% Linebreaks \\ can be used within to get better formatting as desired.
+% Do not put math or special symbols in the title.
+\title{Segmentación de Zonas de Fractura en Imágenes SEM: \\
+       Análisis Comparativo mediante Experimentación Automatizada }
+%
+%
+% author names and IEEE memberships
+% note positions of commas and nonbreaking spaces ( ~ ) LaTeX will not break
+% a structure at a ~ so this keeps an author's name from being broken across
+% two lines.
+% use \thanks{} to gain access to the first footnote area
+% a separate \thanks must be used for each paragraph as LaTeX2e's \thanks
+% was not built to handle multiple paragraphs
+%
+
+\author{
+    Darío Hernández Cubilla, 
+    Diego Manuel Viera Martínez, 
+    Francisco Préstamo Bernárdez, 
+    Jossué Arteche Muñoz, 
+    Luis Alejandro Arteaga Morales, 
+    Mauricio Sunde Jimenez, 
+    Pablo Gómez Vidal
+    }
+
+
+% make the title area
+\maketitle
+% As a general rule, do not put math, special symbols or citations
+% in the abstract or keywords.
+% \begin{abstract}
+% The abstract goes here.
+% \end{abstract}
+
+% Note that keywords are not normally used for peerreview papers.
+% \begin{IEEEkeywords}
+% IEEE, IEEEtran, journal, \LaTeX, paper, template.
+% end{IEEEkeywords}
+
+% \begin{abstract}
+% Se presenta un enfoque sistemático para la detección de zonas frágiles y dúctiles en imágenes obtenidas mediante microscopía electrónica de barrido (SEM), un problema clave en la caracterización de fracturas. Para abordar la selección del modelo óptimo, se implementó un pipeline de AutoML ligero que permite la experimentación ágil con modelos basados en transformers y estrategias de segmentación jerárquica. La viabilidad de estas estrategias se evalúa bajo un marco experimental riguroso que considera explícitamente las limitaciones computacionales y la escasez de datos etiquetados. Los resultados evidencian cómo las técnicas de aumentación de datos y la transferencia de aprendizaje impactan en la calidad de la segmentación, ofreciendo una solución efectiva para el análisis automatizado de materiales.
+% \end{abstract}
+
+\section{Introducción}
+La caracterización de los mecanismos de fractura en materiales es un problema central en la ciencia e ingeniería de materiales, debido a su impacto directo en la evaluación del desempeño mecánico y la confiabilidad estructural. En particular, la identificación de zonas asociadas a comportamientos frágiles y dúctiles a partir de microestructuras proporciona información clave para el análisis del fallo y el diseño de materiales.
+
+Las imágenes obtenidas mediante microscopía electrónica de barrido (SEM) constituyen una de las principales herramientas para el estudio de superficies de fractura y microestructuras. No obstante, el análisis tradicional de este tipo de imágenes se basa en inspección visual experta, lo cual introduce subjetividad, limita la reproducibilidad de los resultados y dificulta su aplicación a grandes volúmenes de datos.
+
+En este contexto, las técnicas de aprendizaje automático y, en particular, los modelos de visión por computador han mostrado un potencial significativo para automatizar la identificación y delimitación de estas zonas en imágenes complejas. Recientemente, modelos basados en transformers, como Vision Transformer (ViT) y Swin Transformer, han alcanzado resultados destacados en tareas de segmentación semántica, posicionándose como herramientas prometedoras para la metalografía cuantitativa. Sin embargo, su aplicación efectiva en este dominio suele estar condicionada por la disponibilidad de datos anotados por expertos y recursos computacionales elevados.
+
+Estas limitaciones motivan la exploración de estrategias alternativas que permitan aprovechar modelos de alto desempeño bajo restricciones de cómputo y datos. En este trabajo se consideran tanto modelos del estado del arte como enfoques propuestos basados en la descomposición espacial de la imagen y el uso de clasificadores preentrenados, con el objetivo de transferir conocimiento desde tareas de clasificación hacia problemas de segmentación.
+
+Adicionalmente, se adopta un diseño de experimentación automatizada (un AutoML bastante simple) para facilitar la selección de modelos y el ajuste de hiperparámetros. Este enfoque simplificado permite evaluar múltiples configuraciones de pipelines de manera eficiente, considerando explícitamente las restricciones impuestas por un entorno de cómputo limitado. El objetivo de este estudio es determinar la estrategia más efectiva para la caracterización automática de zonas frágiles y dúctiles, utilizando esta herramienta experimental para comparar arquitecturas del estado del arte con enfoques alternativos.
+
+% \section{Estado del arte}
+% segmentacion
+% clasificacion
+% data augmentation
+% evaluation
+
+\section{Estado del Arte}
+
+\subsection{Modelos de Segmentación}
+La segmentación de imágenes ha estado dominada históricamente por las Redes Neuronales Convolucionales (CNN) \cite{sakib2019overview}. El modelo \emph{U-Net} es el estándar para arquitecturas de codificador-decodificador con conexiones de salto, permitiendo recuperar detalles espaciales finos \cite{ronneberger2015unet, cao2021swinunet}. En el ámbito de la microscopía electrónica (SEM), modelos como \emph{Mask R-CNN} se utilizan para la segmentación de instancias, permitiendo delimitar partículas individuales incluso en configuraciones de aglomerados \cite{monchot2021titanium, liu2021swin}.
+
+Recientemente, el \emph{Vision Transformer (ViT)} ha demostrado que es posible prescindir de las convoluciones al tratar parches de imagen como secuencias, capturando dependencias globales que las CNN suelen omitir \cite{dosovitskiy2021vit, cao2021swinunet}. No obstante, el ViT presenta una complejidad computacional cuadrática respecto al tamaño de la imagen, lo que dificulta su uso en tareas de predicción densa \cite{liu2021swin}. Para solucionar esto, el \emph{Swin Transformer} introduce mapas de características jerárquicos y un esquema de atención en ventanas desplazadas (\textit{shifted windows}), logrando una complejidad lineal \cite{liu2021swin}. Basado en esto, el modelo \emph{Swin-Unet} propone una arquitectura puramente basada en Transformers con estructura en forma de U para segmentación precisa, sustituyendo las operaciones de convolución por bloques de Swin Transformer \cite{cao2021swinunet}.
+
+\subsection{Clasificación de Imágenes}
+La clasificación de imágenes es fundamental cuando se emplean estrategias de segmentación mediante \textit{quadtrees} o ventanas deslizantes (\textit{sliding windows}). Modelos de CNN como \emph{ResNet} han sido la opción predeterminada debido a sus conexiones residuales que facilitan el entrenamiento profundo \cite{he2016resnet, sakib2019overview}. En microscopía electrónica, se han implementado bloques de \emph{EfficientNetB7} para clasificar morfologías de parches con alta precisión \cite{classification_report}. 
+
+Aunque los mecanismos de atención temprana aplicados mediante \textit{sliding windows} presentaban una alta latencia por el acceso costoso a memoria, el enfoque de ventanas locales de \emph{Swin Transformer} optimiza este proceso, permitiendo conexiones entre parches vecinos mediante el desplazamiento de ventanas en capas consecutivas \cite{liu2021swin}.
+
+\subsection{Aumentación de Datos en Imágenes SEM}
+Debido a la escasez de datos etiquetados en SEM, la aumentación es crítica. Las técnicas estándar incluyen transformaciones geométricas como \emph{flipping (volteo), rotaciones de 90º y aleatorias, traslación y escalado} \cite{monchot2021titanium, gaox2024cyclegan}. El estado del arte actual también incluye métodos generativos avanzados, como el uso de \emph{StyleGAN2 con ADA} (Aumentación Adaptativa del Discriminador) para generar microestructuras realistas a partir de conjuntos de datos limitados \cite{lambard2023stylegan}. Asimismo, se han empleado modelos \emph{CycleGAN} para mejorar la calidad de imagen y eliminar el desenfoque en muestras de baja conductividad \cite{gaox2024cyclegan}.
+
+\subsection{Métricas de Evaluación}
+Para cuantificar el desempeño en segmentación, las fuentes destacan cuatro métricas principales \cite{classification_report, cao2021swinunet}:
+\begin{itemize}
+    \item mIoU (Mean Intersection over Union): Mide el solapamiento entre la predicción y el ground truth.
+    \item Dice Coefficient (DSC): Equivalente al F1-Score en segmentación binaria, evalúa la similitud entre conjuntos.
+    \item HD95 (Hausdorff Distance): Mide la distancia máxima entre los bordes de la predicción y la máscara real, indicando precisión en el contorno.
+    \item AP (Average Precision): Utilizada comúnmente en segmentación de instancias para evaluar la detección de objetos individuales.
+\end{itemize}
+
+
+\section{Metodología Experimental y Pipeline de Experimentación}
+La complejidad inherente a la segmentación de fracturas, sumada a la escasez de imágenes anotadas, exige un rigor experimental superior al convencional. Para abordar esto, se diseñó e implementó un framework de experimentación automatizada (\textit{AutoML custom y simple}) que permite la evaluación sistemática y reproducible de hipótesis de modelado.
+Este enfoque trasciende la simple búsqueda de hiperparámetros; constituye una metodología para aislar variables y cuantificar el impacto real de cada componente (arquitectura vs. estrategia de datos) en el desempeño final.
+
+\subsection{Arquitectura del Flujo Experimental}
+El proceso de investigación se estructuró mediante un pipeline lineal estandarizado, que garantiza que todas las estrategias compitan en igualdad de condiciones. El flujo se define formalmente como:
+
+\begin{equation}
+    \mathcal{P} : \text{Espacio de Datos} \xrightarrow{\phi} \text{Entrenamiento} \xrightarrow{\psi} \text{Evaluación}
+\end{equation}
+
+Donde el orquestador del sistema gestiona la ejecución iterativa de este pipeline, permutando las configuraciones de datos ($\phi$) y modelos ($\psi$) para cubrir exhaustivamente el espacio de búsqueda definido.
+
+\subsection{Estrategias de Aumentación y Control de Variabilidad}
+El primer componente del sistema, el \textit{Data Node}, tiene la responsabilidad crítica de definir el régimen de datos. Su función no es solo aplicar transformaciones, sino asegurar la integridad del protocolo experimental.
+El sistema genera particiones de datos (e.g., k-fold cross-validation) y aplica políticas de aumentación sintética de manera determinista. Esto permite desacoplar los efectos de la variabilidad del muestreo de las mejoras algorítmicas, permitiendo responder preguntas como: \textit{¿Es la mejora en precisión atribuible al modelo Swin Transformer o a la introducción de mas ejemplos entrenantes mediante data augmentation en el entrenamiento?}
+
+\subsection{Homogeneización del Entrenamiento de Modelos}
+Para garantizar la comparabilidad entre arquitecturas dispares (e.g., Transformers vs. Algoritmos de Partición Recursiva) Todos los modelos deben implementar métodos estandarizados \texttt{train()} y \texttt{evaluate()}, lo que desacopla la lógica interna del algoritmo del flujo experimental.
+
+El componente \texttt{ModelNode} orquesta la ejecución siguiendo un principio de aislamiento estricto. Para cada partición del dataset ($k$-fold). Esto asegura una inicialización "tabula rasa" para cada experimento, eliminando cualquier riesgo de fuga de pesos o sesgo residual de entrenamientos previos. Así, la evaluación refleja puramente la capacidad del modelo para aprender de los datos suministrados en esa iteración específica.
+
+
+\subsection{Evaluación Imparcial y Persistencia}
+La etapa final (\textit{Evaluator Node}) opera como un auditor independiente. Recibe las predicciones generadas y calcula métricas de desempeño sin acceso a la lógica que las produjo, asegurando una "evaluación ciega".
+Adicionalmente, el sistema implementa un mecanismo de persistencia granular que registra no solo las métricas finales, sino también los tiempos de cómputo y las configuraciones exactas. Esto habilita un análisis posterior profundo sobre el \textit{trade-off} entre costo computacional y precisión, fundamental para proponer soluciones viables en entornos de recursos limitados.
+
+En conclusión, esta metodología instrumentaliza el método científico: permite plantear hipótesis sobre arquitecturas y datos, y validarlas o refutarlas mediante evidencia empírica generada en un entorno controlado.
+
+
+
+\section{Descripción del dataset}
+% - División train/test
+% - Origen de las imágenes SEM
+% - Dimensiones (512x512)
+% - Clases de segmentación (frágil, dúctil, mixto)
+% - Distribución de clases
+A continuación se proporciona información sobre los datasets utilizados.
+\subsection{Dataset de segmentación}
+
+El dataset principal utilizado para la tarea de segmentación está compuesto por 94 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
+
+Las máscaras de referencia delimitan dos morfologías de fractura fundamentales: zonas de comportamiento frágil y zonas de comportamiento dúctil. A nivel global, el conjunto presenta un desbalance significativo, con 73 imágenes donde predomina la fractura dúctil y 21 imágenes con mayor presencia de fractura frágil. Esta distribución refleja la naturaleza del material analizado y constituye un desafío adicional para la generalización del modelo.
+
+Las imágenes originales presentan tamaños variables, lo cual motivó la adopción de un preprocesamiento de redimensionamiento a una resolución fija de $512 \times 512$ píxeles para los modelos basados en transformers y para el análisis estadístico espacial.
+
+Con el objetivo de caracterizar la distribución espacial de las clases, se construyó el mapa de calor de la Figura~\ref{fig:heatmap_ductil} agregando las máscaras redimensionadas. Dado que las clases son excluyentes, el mapa de calor representa únicamente la frecuencia de la clase dúctil. Este análisis permitió identificar regiones con mayor recurrencia de comportamiento dúctil, así como zonas donde la presencia de material frágil es más probable, aportando una visión global de la estructura espacial del dataset.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{heatmap.png}
+    \caption{Mapa de calor de la distribución espacial de las clases dúctil y frágil, obtenido a partir de la superposición de las máscaras de segmentación redimensionadas a $512 \times 512$ píxeles.}
+    \label{fig:heatmap_ductil}
+\end{figure}
+
+
+\subsection{Dataset externo de clasificación}
+
+Para las tareas de clasificación, en particular aquellas asociadas a los enfoques basados en Quadtree y Sliding Window, se utilizó un dataset externo independiente del conjunto de segmentación. Este dataset fue empleado para entrenar los clasificadores auxiliares encargados de etiquetar regiones completas de imagen.
+
+El conjunto de datos corresponde al dataset de imágenes SEM publicado por Campari~\cite{campari_2025_15510590}, el cual contiene imágenes de microscopía electrónica anotadas a nivel de imagen para tareas de clasificación. El uso de este dataset permitió desacoplar el entrenamiento de los clasificadores del proceso de segmentación, habilitando estrategias de transferencia de aprendizaje desde clasificación hacia segmentación regional.
+
+Cabe destacar que este dataset externo no fue utilizado en ninguna etapa del entrenamiento de los modelos de segmentación directa, ni en la construcción del conjunto de prueba, garantizando así la independencia entre las fuentes de datos.
+
+
+\section{Estrategias de Segmentación}
+La segmentación de zonas frágiles y dúctiles se aborda mediante un conjunto de estrategias complementarias que responden a distintos niveles de complejidad y granularidad en la representación de la imagen. En primer lugar, se consideran arquitecturas basadas en Vision Transformers y Swin Transformers, seleccionadas por su capacidad para modelar dependencias espaciales de largo alcance y por su consolidación como enfoques de referencia en tareas de segmentación densa. Estos modelos permiten aprender representaciones globales y jerárquicas directamente a partir de la imagen completa, proporcionando una base sólida para la identificación precisa de regiones con comportamiento mecánico diferenciado.
+
+De forma complementaria, se exploran estrategias de segmentación indirecta que reutilizan conocimiento previamente adquirido en tareas de clasificación. En este enfoque, la información semántica extraída por modelos entrenados para discriminar regiones frágiles y dúctiles se emplea como guía para definir esquemas de segmentación basados en particiones espaciales adaptativas. En particular, se consideran métodos que descomponen la imagen en regiones locales cuya resolución y extensión se ajustan dinámicamente en función de la complejidad visual y la confianza de la clasificación, permitiendo una transición controlada entre análisis global y local.
+
+Este planteamiento unifica modelos de segmentación directa y estrategias guiadas por clasificación bajo un mismo marco conceptual, facilitando la comparación entre enfoques de distinta naturaleza y sentando las bases para la incorporación progresiva de métodos alternativos de particionado espacial en subsecciones posteriores.
+
+\subsection{Vision Transformer (ViT)}
+% - Arquitectura general
+% - División en patches
+% - Mecanismo de atención
+% - Adaptación para segmentación semántica
+% - Hiperparámetros utilizados
+
+La estrategia de segmentación basada en \emph{Vision Transformer} (ViT) se diseñó siguiendo un enfoque modular que separa explícitamente la definición arquitectónica del modelo del proceso de entrenamiento y evaluación. Esta decisión metodológica permite desacoplar los aspectos conceptuales del modelo de los detalles operativos, facilitando su integración en el framework de \emph{AutoML} y asegurando comparabilidad con otras estrategias de segmentación.
+
+\subsubsection{Arquitectura encoder--decoder}
+
+El modelo adopta una arquitectura de tipo \emph{encoder--decoder}, donde el encoder se basa en un Transformer y el decoder en una red neuronal convolucional. Esta combinación permite explotar la capacidad del mecanismo de autoatención para capturar dependencias globales, mientras que el decoder convolucional reconstruye la información espacial necesaria para una segmentación densa a nivel de píxel.
+
+El encoder transforma la imagen de entrada en una secuencia de representaciones latentes mediante un proceso de partición en parches no solapados. Cada parche es proyectado a un espacio de alta dimensionalidad, generando una secuencia de \emph{embeddings} que reemplaza la representación basada en píxeles. Dado que los Transformers carecen de noción explícita de orden espacial, se incorporan codificaciones posicionales aprendibles, las cuales preservan la información relativa a la localización de cada parche en la imagen original.
+
+Posteriormente, esta secuencia es procesada por múltiples capas de autoatención, donde cada parche puede intercambiar información con todos los demás. Este mecanismo permite construir representaciones con contexto global, capturando relaciones de largo alcance.
+
+\subsubsection{Decoder convolucional y reconstrucción espacial}
+
+La salida del encoder, expresada como una secuencia de vectores latentes, es reestructurada nuevamente en forma de mapa bidimensional de características. A partir de esta representación de baja resolución espacial, el decoder convolucional realiza una reconstrucción progresiva hasta alcanzar la resolución original de la imagen.
+
+Este proceso se lleva a cabo mediante una serie de etapas de refinamiento y reescalado, en las cuales se combinan convoluciones para la extracción local de características con operaciones de interpolación para el aumento gradual de la resolución. En la etapa final, una proyección lineal por píxel permite obtener, para cada clase, un mapa de activación que representa la pertenencia de cada píxel a las distintas regiones de interés.
+
+\subsubsection{Integración en el esquema experimental}
+
+La arquitectura ViT descrita se integra en el diseño experimental como un módulo autocontenido. 
+Durante el entrenamiento, se emplea un esquema supervisado estándar para segmentación multiclase, utilizando funciones de pérdida adecuadas para este tipo de problema y validación sobre datos no vistos para monitorear el desempeño. En la fase de inferencia, las salidas continuas del modelo son convertidas en máscaras discretas mediante una asignación por máxima activación, produciendo mapas de segmentación directamente comparables con las máscaras de referencia.
+
+Esta estrategia combina la capacidad de los Vision Transformers para modelar contexto global con la precisión espacial de decodificadores convolucionales, resultando adecuada para problemas de segmentación.
+
+\subsection{Swin Transformer}
+
+El segmentador basado en \emph{Swin Transformer} se desarrolló siguiendo el mismo principio aplicado al modelo ViT: una separación estricta entre la arquitectura del modelo y la lógica de entrenamiento y evaluación. Esta coherencia de diseño garantiza modularidad, facilita la comparación experimental y permite integrar el modelo de manera transparente dentro del framework de AutoML.
+
+\subsubsection{Arquitectura encoder--decoder}
+
+Al igual que en el caso del ViT, el modelo adopta una arquitectura de tipo \emph{encoder--decoder}. Sin embargo, el encoder se basa en el Swin Transformer, una evolución de los Transformers para visión computacional que introduce propiedades jerárquicas y de localidad, tradicionalmente asociadas a las redes convolucionales.
+
+El encoder genera representaciones jerárquicas a múltiples escalas espaciales. A partir de la imagen de entrada, el modelo construye progresivamente un conjunto de mapas de características con resoluciones decrecientes, lo que permite capturar información tanto local como global. Este enfoque multiescala resulta especialmente adecuado para tareas de segmentación, donde coexisten detalles finos y estructuras de mayor tamaño.
+
+El mecanismo central del Swin Transformer es la autoatención restringida a ventanas locales, lo que reduce significativamente la complejidad computacional en comparación con la autoatención global. Para evitar la pérdida de información entre regiones disjuntas, estas ventanas se desplazan de manera alternada entre capas consecutivas, permitiendo que la información fluya entre distintas zonas de la imagen. De este modo, el modelo combina eficiencia computacional con una capacidad efectiva de modelar dependencias de largo alcance.
+
+Adicionalmente, la arquitectura fue adaptada para operar sobre imágenes en escala de grises, lo que asegura compatibilidad con el tipo de datos empleado en este trabajo sin alterar los principios fundamentales del modelo.
+
+\subsubsection{Adaptación de resolución y decoder compartido}
+
+El encoder basado en Swin Transformer produce su representación final a una resolución espacial inferior a la utilizada por el decoder convolucional. Para resolver esta discrepancia, se introduce un módulo de adaptación intermedio que reescala las características extraídas por el encoder hasta la resolución esperada por el decoder.
+
+Una vez ajustada la resolución, las características son procesadas por el mismo decoder convolucional utilizado en el modelo basado en ViT. Este decoder realiza una reconstrucción progresiva de la segmentación mediante etapas sucesivas de refinamiento y aumento de resolución, culminando en un mapa de segmentación denso a nivel de píxel. El uso de un decoder compartido evita la duplicación de componentes, mejora la mantenibilidad del sistema y asegura que las diferencias observadas en los resultados se deban principalmente al encoder y no a variaciones en la fase de reconstrucción.
+
+\subsubsection{Entrenamiento, regularización y evaluación}
+
+El proceso de entrenamiento del modelo Swin incorpora monitoreo constante del desempeño.
+Un aspecto distintivo de esta estrategia es la incorporación de un mecanismo de \emph{early stopping} durante el entrenamiento. Este mecanismo monitoriza el desempeño sobre el conjunto de validación y detiene el proceso de optimización cuando no se observan mejoras durante un número predefinido de iteraciones consecutivas. De este modo, se reduce el riesgo de sobreajuste y se selecciona automáticamente el estado del modelo con mejor capacidad de generalización.
+
+En la fase de inferencia, el modelo genera mapas de activación multiclase que son transformados en máscaras de segmentación discretas de forma análoga al modelo ViT, asegurando consistencia.
+
+El segmentador basado en Swin Transformer combina eficiencia computacional, representación jerárquica multiescala y mecanismos de regularización explícitos, constituyendo una alternativa de alto nivel dentro del estado del arte para segmentación semántica en imágenes complejas.
+
+
+\subsection{Descomposición quadtree}
+
+El enfoque de segmentación basado en quadtree difiere de manera fundamental de los modelos neuronales de tipo extremo a extremo. En lugar de aprender directamente una correspondencia píxel a píxel, este método se formula como un algoritmo recursivo de tipo \emph{divide y vencerás}, que combina un modelo de clasificación independiente con una estrategia adaptativa de partición espacial. Esta aproximación permite razonar sobre regiones completas de la imagen y ajustar dinámicamente el nivel de detalle de la segmentación en función de la complejidad local.
+
+\subsubsection{Principio de divide y vencerás mediante quadtree}
+
+El algoritmo opera de manera recursiva sobre regiones rectangulares de la imagen. Inicialmente, la imagen completa se considera como una única región. Para cada región analizada, se consulta a un clasificador externo con el fin de estimar la clase predominante y un nivel de confianza asociado a dicha predicción.
+
+Si la confianza supera un umbral predefinido, se asume que la región es suficientemente homogénea y se asigna la clase predicha a todos los píxeles que la componen. En caso contrario, el algoritmo interpreta que la región contiene información heterogénea o ambigua y procede a subdividirla en cuatro cuadrantes de igual tamaño. Este proceso se repite de forma independiente para cada subregión.
+
+La recursión se detiene cuando se cumple alguna de las siguientes condiciones: la confianza del clasificador es suficiente, la región alcanza un tamaño mínimo que impide una subdivisión significativa, o se llega a una profundidad máxima de recursión. Como resultado, el método genera regiones extensas y uniformes en zonas simples de la imagen, y particiones más finas en áreas con mayor complejidad estructural.
+
+\subsubsection{Separación entre segmentación y clasificación}
+
+Un rasgo central de este enfoque es la separación explícita entre la lógica de segmentación y el modelo de clasificación utilizado para tomar decisiones locales. El algoritmo quadtree se limita a gestionar la recursión y la asignación espacial de etiquetas, mientras que el clasificador actúa como un componente intercambiable encargado de evaluar regiones de la imagen.
+
+Esta separación permite desacoplar completamente la estrategia de partición del método concreto de clasificación empleado. En consecuencia, es posible evaluar distintos clasificadores bajo un mismo esquema de segmentación sin modificar el algoritmo quadtree, lo que aporta flexibilidad experimental y facilita el análisis comparativo de modelos.
+
+\subsubsection{Proceso de ajuste de parámetros mediante metaheurísticas}
+
+A diferencia de los modelos neuronales clásicos, el proceso de entrenamiento de este segmentador no se basa en retropropagación de gradientes. En su lugar, el ajuste se centra en la optimización de los hiperparámetros que controlan el comportamiento del algoritmo recursivo, tales como el umbral de confianza, el tamaño mínimo de región y la profundidad máxima de subdivisión.
+
+Este ajuste se plantea como un problema de optimización global y se resuelve mediante una metaheurística de recocido simulado (\emph{simulated annealing}). El procedimiento explora el espacio de hiperparámetros evaluando configuraciones candidatas sobre un conjunto de validación, aceptando tanto mejoras directas como, de manera probabilística, configuraciones subóptimas en etapas tempranas de la búsqueda. Este mecanismo permite escapar de óptimos locales y favorece una exploración más amplia del espacio de soluciones.
+
+Al finalizar el proceso, el algoritmo conserva la configuración de hiperparámetros que produjo el mejor desempeño global, la cual se fija para la generación de resultados finales.
+
+\subsubsection{Generación y evaluación de las segmentaciones}
+
+Durante la fase de evaluación, el algoritmo se aplica de manera independiente a cada imagen del conjunto de datos. A partir de una máscara inicialmente vacía, el proceso recursivo va asignando etiquetas a las distintas regiones según las decisiones tomadas en cada nivel de la jerarquía quadtree. El resultado final es una máscara de segmentación completa, construida de forma adaptativa en función de la complejidad local de la imagen.
+
+Las máscaras predichas se comparan posteriormente con las máscaras de referencia mediante las métricas definidas en el framework de evaluación, lo que permite analizar cuantitativamente el desempeño del método y contrastarlo con los enfoques basados en redes neuronales profundas.
+
+\subsection{Segmentación basada en ventanas deslizantes}
+
+El modelo de segmentación por \textit{Sliding Window} implementa una estrategia que divide la imagen de entrada en múltiples regiones más pequeñas, sobre las cuales se aplica un clasificador de imágenes previamente entrenado. Este enfoque permite realizar segmentación a nivel de píxel utilizando clasificadores más simples, sin necesidad de un modelo profundo para toda la imagen.
+
+\subsubsection{Estrategia general}
+
+La idea central consiste en deslizar una ventana rectangular de tamaño fijo sobre la imagen de entrada de $512 \times 512$ píxeles. En cada posición de la ventana, el clasificador determina la clase más probable de esa región. Las ventanas se superponen parcialmente, controladas por el parámetro de desplazamiento (\textit{stride}). Cada píxel puede ser evaluado varias veces por distintas ventanas superpuestas, y la clase final de cada píxel se determina agregando los resultados de todas las ventanas que lo cubren.
+
+\subsubsection{Parámetros principales}
+
+El comportamiento del modelo depende de dos parámetros fundamentales:
+
+\begin{itemize}
+  \item Tamaño de ventana (\textit{window\_size}): Define la altura y el ancho de la ventana deslizante en píxeles. Por ejemplo, un valor de 64 genera ventanas de 64x64 píxeles.
+  \item Desplazamiento (\textit{stride}): Controla cuántos píxeles se mueve la ventana en cada paso, tanto horizontal como verticalmente. Un desplazamiento menor implica mayor solapamiento entre ventanas, lo que aumenta el número de evaluaciones por píxel y puede producir segmentaciones más suaves, aunque con un mayor costo computacional. Un desplazamiento igual al tamaño de la ventana elimina la superposición.
+\end{itemize}
+
+\subsubsection{Proceso de segmentación}
+
+Para segmentar una imagen, se construye primero un mapa de votos tridimensional que acumula las predicciones del clasificador en cada ventana. Posteriormente, para cada píxel, se determina la clase final seleccionando aquella que haya recibido la mayor cantidad de votos o la mayor puntuación ponderada por la confianza del clasificador, dependiendo del método de agregación elegido. El resultado es una máscara de segmentación de la misma resolución que la imagen original.
+
+\subsubsection{Evaluación}
+
+El modelo se evalúa iterando sobre todas las imágenes del conjunto de datos de segmentación, generando máscaras predichas mediante el proceso descrito y comparándolas con las máscaras reales. Se calculan métricas estándar como precisión por píxel, IoU y F1-score, proporcionando una evaluación detallada del rendimiento del modelo.
+
+\section{Modelos de clasificación para segmentación}
+En esta sección se describen los modelos de clasificación empleados como componentes fundamentales de las estrategias de segmentación guiada basadas en particionado espacial. A diferencia de los enfoques de segmentación directa, estos métodos delegan la toma de decisiones semánticas a clasificadores entrenados para discriminar entre zonas frágiles y dúctiles, cuya salida se utiliza posteriormente para construir máscaras de segmentación a distintas escalas.
+
+El objetivo de esta sección es caracterizar los clasificadores utilizados, independientemente del esquema de particionado específico en el que se integran. De este modo, se separa explícitamente el análisis del modelo de clasificación del mecanismo geométrico de segmentación, permitiendo evaluar de forma aislada el impacto de la arquitectura del clasificador en el desempeño final del sistema. Las subsecciones siguientes presentan los distintos modelos considerados.
+
+\subsection{Clasificador CNN}
+
+El clasificador basado en Redes Neuronales Convolucionales (CNN) fue diseñado 
+para clasificar regiones de tamaño variable extraídas por el algoritmo Quadtree.
+
+% \subparagraph{Arquitectura General}
+
+La arquitectura sigue un patrón de extracción de características seguido de 
+clasificación:
+
+\begin{equation}
+    \begin{aligned}
+        \text{Entrada} &\rightarrow \text{Bloques Conv.} \rightarrow 
+        \text{Pooling Global} \\
+        &\rightarrow \text{Clasificador} \rightarrow \text{Softmax}
+    \end{aligned}
+\end{equation}
+
+% \subparagraph{Bloques Convolucionales}
+
+Cada bloque convolucional aplica la siguiente secuencia:
+
+\begin{enumerate}
+    \item Convolución 3×3 con padding=1
+    \item Batch Normalization
+    \item Activación ReLU
+    \item Convolución 3×3 con padding=1
+    \item Batch Normalization
+    \item Activación ReLU
+    \item Max Pooling 2×2 con stride=2
+\end{enumerate}
+
+Se usa un kernel de $3 \times 3$ porque es el tamaño mínimo que captura información 
+espacial (arriba, abajo, izquierda, derecha y diagonales). Al apilar múltiples 
+capas con kernels pequeños se obtiene un campo receptivo grande con menos 
+parámetros que usando un kernel grande directamente.
+
+El padding de $1$ píxel mantiene las dimensiones espaciales constantes después 
+de cada convolución, lo que simplifica el diseño de la red.
+
+Batch Normalization se incluye para acelerar el entrenamiento y estabilizar 
+los gradientes, permitiendo usar tasas de aprendizaje más altas.
+
+Se usan dos convoluciones por bloque antes del pooling para aumentar la 
+capacidad de la red sin reducir las dimensiones espaciales prematuramente.
+
+% \subparagraph{Número Configurable de Bloques}
+
+El parámetro \texttt{num\_blocks} controla la profundidad de la red. Como cada 
+bloque reduce las dimensiones a la mitad mediante Max Pooling, el tamaño mínimo 
+de entrada es $2^{n} \times 2^{n}$ píxeles, donde $n$ es el número de bloques.
+
+\begin{table}[h]
+\centering
+\caption{Relación entre número de bloques y tamaño mínimo de entrada}
+\begin{tabular}{ccc}
+\toprule
+\texttt{num\_blocks} & Tamaño mínimo & Canales finales \\
+\midrule
+2 & 4×4 & 64 \\
+3 & 8×8 & 128 \\
+4 & 16×16 & 256 \\
+5 & 32×32 & 512 \\
+\bottomrule
+\end{tabular}
+\label{tab:cnn_blocks}
+\end{table}
+
+El valor por defecto es 3 bloques, lo que permite clasificar regiones de 8×8 
+píxeles. Este tamaño fue elegido porque el Quadtree puede subdividir hasta 
+regiones pequeñas, y 8×8 se consideró suficiente para contener información visual 
+distinguible mientras permite segmentación detallada.
+
+% \subparagraph{Progresión de Filtros}
+
+El número de filtros se duplica en cada bloque, comenzando desde 32:
+
+\begin{equation}
+    \text{filtros en bloque } i = 32 \times 2^{i-1}
+\end{equation}
+
+Esta progresión compensa la reducción de dimensiones espaciales: a medida que 
+la imagen se hace más pequeña, se aumentan los canales para mantener la 
+capacidad de representación.
+
+% \subparagraph{Adaptive Average Pooling}
+
+Antes de la clasificación se aplica \texttt{AdaptiveAvgPool2d((1,1))}, que 
+reduce cualquier tamaño espacial a 1×1 calculando el promedio de cada canal.
+
+Esta capa permite que la red acepte entradas de cualquier tamaño (siempre que 
+cumplan el mínimo). Sin importar si la entrada es 8×8 o 256×256, la salida 
+siempre es un vector de tamaño fijo que puede procesarse por las capas 
+densas.
+
+% \subparagraph{Cabeza de Clasificación}
+
+La cabeza de clasificación consiste en:
+
+\begin{enumerate}
+    \item Aplanamiento del tensor
+    \item Dropout (50\%)
+    \item Capa densa con reducción a 1/4 de los canales
+    \item Activación ReLU
+    \item Dropout (25\%)
+    \item Capa densa final a 3 clases
+\end{enumerate}
+
+El Dropout previene sobreajuste, que es una preocupación con datasets pequeños 
+de imágenes SEM. La capa intermedia reduce la dimensionalidad gradualmente 
+antes de la clasificación final.
+
+% \subparagraph{Salida}
+
+La red produce probabilidades mediante Softmax, donde la probabilidad más alta 
+indica la clase predicha y su valor representa la confianza. Esta confianza es 
+usada por el Quadtree para decidir si subdividir la región o aceptar la 
+clasificación.
+
+% \subparagraph{Entrenamiento}
+
+El entrenamiento usa Cross-Entropy Loss y el optimizador Adam. Las imágenes se 
+agrupan por tamaño para formar batches, ya que las regiones del Quadtree tienen 
+dimensiones variables y solo se pueden apilar en un tensor imágenes del mismo 
+tamaño.
+
+\subsection{Clasificador ViT}
+
+El clasificador basado en Vision Transformer se utiliza como un componente auxiliar dentro del esquema de segmentación jerárquica, con el objetivo de asignar una única etiqueta a regiones completas de la imagen. A diferencia de los modelos de segmentación, este enfoque no opera a nivel de píxel, sino que produce una predicción global acompañada de una medida de confianza, la cual resulta fundamental para guiar las decisiones del algoritmo quadtree.
+
+\subsubsection{Arquitectura del clasificador}
+
+La arquitectura adoptada corresponde a un Vision Transformer estándar para tareas de clasificación de imágenes, cuyo elemento distintivo es el uso de un token de clasificación. La imagen de entrada se divide inicialmente en parches de tamaño fijo, los cuales son proyectados a un espacio de características de alta dimensión mediante un proceso de incrustación. A estas representaciones se les añade información posicional aprendible, permitiendo al modelo preservar las relaciones espaciales entre los distintos parches.
+
+Sobre esta secuencia de representaciones se introduce un token de clasificación, el cual no está asociado a ninguna región específica de la imagen. Este token se antepone a la secuencia de parches y participa activamente en los mecanismos de autoatención del transformer. A lo largo de las capas del encoder, el token de clasificación actúa como un agregador de información global, concentrando en una única representación los patrones más relevantes presentes en la imagen completa.
+
+Finalizado el procesamiento por el transformer, se descartan las representaciones asociadas a los parches y se conserva únicamente el vector correspondiente al token de clasificación. Este vector se proyecta mediante una cabeza de clasificación hacia el espacio de clases, generando puntuaciones que se transforman en probabilidades normalizadas. Estas probabilidades permiten obtener tanto la etiqueta predicha como una estimación explícita de la confianza del modelo.
+
+\subsubsection{Uso del clasificador en regiones de tamaño arbitrario}
+
+Dado que el clasificador se emplea para evaluar regiones de distinto tamaño dentro del esquema quadtree, resulta necesario un preprocesamiento que garantice la compatibilidad con la entrada de tamaño fijo requerida por el Vision Transformer. Cada región extraída de la imagen original se normaliza en formato y número de canales, y posteriormente se redimensiona mediante interpolación a la resolución esperada por el modelo.
+
+Este procedimiento permite aplicar un clasificador entrenado sobre imágenes completas a subregiones arbitrarias, manteniendo la coherencia de las predicciones y asegurando una integración transparente con el algoritmo de segmentación jerárquica.
+
+\subsubsection{Entrenamiento y rol en la segmentación}
+
+El clasificador puede entrenarse de manera independiente sobre conjuntos de datos externos de clasificación, utilizando un esquema supervisado estándar. Una vez finalizado el entrenamiento, el modelo se emplea principalmente en modo de inferencia, proporcionando predicciones rápidas y consistentes durante la ejecución del algoritmo quadtree.
+
+Dentro del diseño experimental, este clasificador actúa como un módulo intercambiable, lo que permite evaluar distintas arquitecturas de clasificación bajo el mismo esquema de segmentación. De este modo, el análisis se centra en estudiar cómo la capacidad discriminativa del clasificador influye en la calidad final de la segmentación basada en descomposición jerárquica.
+
+
+
+\section{Pipeline de Aumentación de Datos}
+Se implementó un conjunto completo de técnicas de aumentación de datos con el objetivo de incrementar la diversidad del dataset y mejorar la generalización de los modelos. La estrategia combinó transformaciones geométricas, fotométricas y específicas para SEM, aplicadas de manera secuencial y probabilística según un pipeline de aumentación.
+
+\subsubsection{Aumentaciones Geométricas}
+% - Rotación, volteo, escala, traslación, recorte
+% - Aplicación simultánea a imagen y máscara
+Afectan tanto a imágenes como a máscaras, manteniendo la alineación espacial:
+
+\begin{itemize}
+    \item Rotación: Rota la imagen y la máscara dentro de un rango definido, simulando diferentes orientaciones de la muestra.
+    \item Volteo: Invierte horizontal o verticalmente.
+    \item Escalado: Realiza zoom in/out manteniendo el tamaño original.
+    \item Traslación: Desplaza la imagen y máscara horizontal y/o verticalmente.
+    \item Recorte aleatorio: Extrae subregiones aleatorias, redimensionadas al tamaño original.
+\end{itemize}
+
+Estas transformaciones permiten al modelo generalizar a variaciones espaciales de la muestra.
+
+\subsubsection{Aumentaciones Fotométricas}
+% - Brillo, contraste, ruido gaussiano, desenfoque, gamma
+% - Aplicación solo a imagen (no a máscara)
+
+Modifican únicamente las imágenes, simulando variaciones en iluminación y ruido, sin afectar las máscaras:
+
+\begin{itemize}
+    \item Brillo.
+    \item Contraste.
+    \item Corrección gamma.
+    \item Ruido gaussiano.
+    \item Desenfoque gaussiano.
+\end{itemize}
+
+Estas técnicas permiten al modelo aprender invariancia frente a condiciones de adquisición o ruido instrumental.
+
+\subsubsection{Aumentaciones Específicas para SEM}
+Diseñadas para capturar artefactos y características típicas de imágenes SEM:
+
+\begin{itemize}
+    \item Deformación elástica (ElasticDeformationAugmentator): Simula variaciones naturales en texturas de roca o deformaciones durante la adquisición.
+    \item Ecualización adaptativa de histograma (AdaptiveHistogramEqualizationAugmentator): Mejora contraste local mediante CLAHE.
+    \item Artefactos de carga: Añade manchas típicas de muestras no conductivas.
+    \item Ruido de líneas de escaneo (ScanLineNoiseAugmentator): Simula líneas de escaneo o barrido que aparecen en SEM.
+\end{itemize}
+
+Estas técnicas aumentan la robustez del modelo frente a artefactos específicos de la microscopía electrónica.
+
+\subsubsection{Composición de Aumentaciones}
+% - Secuencial, selección aleatoria, aplicación probabilística
+% - Estrategias de combinación utilizadas
+Se implementaron métodos compuestos que permiten combinar varias aumentaciones para crear un pipeline complejo y controlado:
+
+\begin{itemize}
+    \item Secuencial: Aplica múltiples aumentaciones de manera secuencial.
+    \item Aplicación probabilistica: Aplica una aumentación con una probabilidad determinada, introduciendo variabilidad controlada.
+    \item Selección aleatoria: Elige una aumentación de un conjunto con probabilidades ponderadas.
+\end{itemize}
+
+Estas estrategias permiten generar un dataset enriquecido sin comprometer la coherencia entre imágenes y máscaras.
+
+\section{Métricas de Evaluación}
+La evaluación del desempeño de los modelos de segmentación se diseñó de forma modular, permitiendo calcular múltiples métricas a partir de una representación estándar de las predicciones y las máscaras de referencia.
+
+Para cada imagen del conjunto de validación, el modelo de segmentación genera una máscara predicha, la cual se empareja con su máscara real correspondiente, generando pares de comparación $(\hat M,M)$.
+
+Estos pares son procesados sistemáticamente para calcular métricas agregadas que resuman el desempeño del modelo. La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel.
+
+La mayoría de las métricas utilizadas se fundamentan en interpretar la segmentación como un problema de clasificación a nivel de píxel. Para una clase dada, cada píxel de la máscara predicha se compara con la máscara real y se clasifica como verdadero positivo (TP), falso positivo (FP), falso negativo (FN) o verdadero negativo (TN). Los evaluadores acumulan estos conteos a lo largo de todas las imágenes antes de calcular la métrica final.
+
+\subsection{Intersección sobre Unión (IoU) y coeficiente Dice}
+% - Fórmula
+% - Variantes: por clase, promedio macro, promedio ponderado
+El \emph{Intersection over Union} (IoU) y el coeficiente \emph{Dice} son las métricas principales para cuantificar el solapamiento entre predicción y referencia.
+El IoU se define como la razón entre la intersección y la unión de ambas máscaras, penalizando tanto falsas detecciones como omisiones. El Dice, estrechamente relacionado, pondera el solapamiento relativo y puede interpretarse como una forma del F1-score a nivel de píxel, siendo ligeramente más sensible a errores de clasificación.
+
+Estas métricas se calculan de tres maneras complementarias:
+(i) por clase, evaluando individualmente cada etiqueta;
+(ii) promedio macro, donde se promedia el valor de cada clase sin ponderación, ofreciendo una visión balanceada incluso ante desbalances severos;
+(iii) promedio ponderado, donde cada clase contribuye según su frecuencia en el conjunto de datos, reflejando el desempeño global pero siendo sensible a clases dominantes como el fondo.
+
+\subsection{Precisión y Recall}
+% - Definiciones
+% - Interpretación en contexto de segmentación
+La precisión y el recall permiten un diagnóstico más fino de los errores del modelo. La precisión mide la confiabilidad de las predicciones positivas, mientras que el recall cuantifica la capacidad del modelo para detectar todos los píxeles relevantes de una clase. Al igual que en IoU y Dice, se reportan promedios macro para analizar el comportamiento medio del modelo en todas las clases, independientemente de su tamaño relativo.
+
+\subsection{Cohesión de la Máscara}
+
+La métrica \emph{Mask Cohesion} no es un indicador estándar como IoU o \emph{Accuracy}, sino un criterio personalizado diseñado para evaluar la plausibilidad geométrica de las máscaras segmentadas, que cuantifica cuánto de la máscara predicha se asemeja a la mascara real.
+
+En lugar de comparar píxel a píxel, esta métrica cuantifica la consistencia estructural global de las predicciones:
+
+\begin{enumerate}
+    \item Representación de forma: Se utiliza un Autoencoder que codifica cada máscara de $512\times512$ píxeles en un vector latente de tres dimensiones, capturando las características estructurales esenciales.
+    
+    \item Detección de anomalías: A partir de las máscaras de referencia, se construye un ``cluster'' de formas válidas en el espacio latente. Un \emph{One-Class SVM} se entrena para delimitar este espacio, identificando inliers (formas plausibles) y outliers (formas anómalas).
+    
+    \item Cálculo de la métrica: Cada máscara predicha se codifica y se clasifica mediante el SVM. La \emph{Mask Cohesion} se define como la fracción de máscaras predichas clasificadas como inliers:
+    \[
+        \text{Mask Cohesion} = \frac{\text{Número de máscaras inlier}}{\text{Número total de máscaras predichas}}.
+    \]
+\end{enumerate}
+
+Un valor alto de \emph{Mask Cohesion} indica que la mayoría de las máscaras predichas poseen una geometría coherente con las máscaras reales, incluso si no son exactas a nivel de píxel. Valores bajos reflejan máscaras fragmentadas, ruidosas o estructuralmente inconsistentes.
+
+
+Este conjunto de métricas proporciona una evaluación integral del desempeño, abarcando exactitud cuantitativa, balance entre clases y calidad estructural de las segmentaciones producidas.
+
+
+\section{Criterio de Selección de Modelo y Justificación del F1-score}
+
+La selección del modelo óptimo se fundamenta en una métrica que capture adecuadamente el balance entre precisión y exhaustividad en cada clase, particularmente ante el desbalance inherente del dataset. Para este propósito, se adopta el \emph{F1-score macro} como criterio principal de comparación entre modelos.
+
+\subsubsection{Equivalencia entre F1-score y coeficiente Dice}
+
+El coeficiente Dice y el F1-score son métricamente equivalentes cuando se interpretan en el contexto de segmentación binaria. Formalmente, dado un conjunto de verdaderos positivos $\text{TP}$, falsos positivos $\text{FP}$ y falsos negativos $\text{FN}$, ambas métricas se definen como:
+
+\begin{equation}
+    \text{Dice} = \frac{2 \cdot |A \cap B|}{|A| + |B|} = \frac{2 \cdot \text{TP}}{2 \cdot \text{TP} + \text{FP} + \text{FN}} = F_1
+\end{equation}
+
+donde $A$ representa el conjunto de píxeles predichos como positivos y $B$ el conjunto de píxeles realmente positivos (ground truth). Esta equivalencia permite interpretar el F1-score como una medida de solapamiento entre la predicción y la referencia, lo cual es precisamente el objetivo en tareas de segmentación semántica.
+
+\subsubsection{Justificación del promedio macro}
+
+Dado el desbalance significativo entre clases (73 imágenes con predominio dúctil frente a 21 con predominio frágil), el uso del promedio \emph{macro} resulta fundamental. A diferencia del promedio ponderado, el \emph{F1-score macro} calcula el F1 de forma independiente para cada clase y luego promedia sin considerar la frecuencia relativa:
+
+\begin{equation}
+    F_1^{\text{macro}} = \frac{1}{C} \sum_{c=1}^{C} F_1^{(c)}
+\end{equation}
+
+Este enfoque garantiza que el desempeño en la clase minoritaria (frágil) tenga igual peso que el de la clase mayoritaria (dúctil), evitando que un modelo que simplemente prediga la clase dominante obtenga puntuaciones artificialmente elevadas. Un modelo con alto $F_1^{\text{macro}}$ debe necesariamente desempeñarse bien en \emph{todas} las clases, lo cual es el comportamiento deseado para la caracterización de fracturas.
+
+\subsubsection{Proceso de selección basado en validación cruzada}
+
+El criterio de selección se aplica dentro del framework de experimentación automatizada mediante el siguiente protocolo:
+
+\begin{enumerate}
+    \item Para cada configuración (modelo + estrategia de aumentación), se ejecuta validación cruzada con $k=5$ folds.
+    \item En cada fold, se calcula el $F_1^{\text{macro}}$ sobre el conjunto de validación.
+    \item El desempeño final de cada configuración corresponde al promedio de los 5 valores obtenidos.
+    \item La configuración con mayor $F_1^{\text{macro}}$ promedio se selecciona como (modelo + estrategia de aumentación) óptimo.
+\end{enumerate}
+
+Este protocolo asegura que la selección no esté sesgada por particiones particulares del dataset y que el modelo elegido exhiba un desempeño robusto y generalizable. Las métricas complementarias (accuracy, mask cohesion) se reportan para proporcionar una visión holística, pero no participan directamente en el criterio de selección.
+
+
+% \subsection{Diseño del Framework AutoML}
+% - Arquitectura de nodos (DataAugmentatorNode, ModelNode, EvaluatorNode)
+% - Validación cruzada K-fold
+% - Sistema de caché para experimentos
+% - Flujo de ejecución
+
+\section{Resultados}
+
+En esta sección se presentan los resultados obtenidos a partir de las distintas combinaciones de estrategias de aumentación y modelos de segmentación evaluados. El desempeño se reporta mediante el \emph{F1-score} macro, exactitud (\emph{accuracy}), cohesion de la máscara (\emph{mask cohesion}) promedio en los $k=5$ folds y el tiempo total de ejecución, ambos agregados sobre las validaciones correspondientes.
+
+\subsection{Configuración de los modelos evaluados}
+
+Antes de analizar los resultados, se describen brevemente las configuraciones de los modelos utilizados:
+
+Se evaluaron dos configuraciones de segmentadores ViT:
+
+\begin{itemize}
+\item ViT estándar: dimensión del embedding de 256, profundidad de 6 capas, 8 cabezales de atención y una MLP interna de dimensión 512.
+\item ViT grande: dimensión del embedding de 512, profundidad de 12 capas, 16 cabezales de atención y una MLP de dimensión 2048.
+\end{itemize}
+
+Ambos modelos fueron entrenados durante 40 épocas con tamaño de batch fijo y bajo las mismas condiciones de optimización.
+
+De forma análoga, se consideraron dos variantes de Swin Transformer:
+
+\begin{itemize}
+\item Swin estándar: embedding inicial de 64 dimensiones, con una jerarquía de profundidades [2, 2, 6, 2] y número de cabezales [4, 8, 16, 32].
+\item Swin grande: embedding inicial de 128 dimensiones, una arquitectura más profunda [2, 2, 18, 2] y cabezales [8, 16, 32, 64].
+\end{itemize}
+
+Los enfoques basados en \emph{Quadtree} y \emph{Sliding Window} utilizan clasificadores auxiliares (CNN o ViT) entrenados sobre datasets de clasificación independientes. Dado que el proceso de entrenamiento de estos modelos no depende directamente del dataset de segmentación, se optó por evaluar únicamente una configuración sin aumentación de datos sobre el dataset de segmentación, con el fin de reducir el costo computacional y evitar redundancias experimentales.
+
+\subsection{Resultados sin aumentación de datos}
+
+La Tabla~\ref{tab:results_identity} muestra los resultados obtenidos utilizando el nodo de aumentación identidad (sin transformaciones adicionales).
+
+\begin{table}[ht]
+\centering
+\caption{Resultados con aumentación identidad}
+\label{tab:results_identity}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} & \textbf{Tiempo (s)} \\
+\hline
+ViT estándar & 0.5977 & 0.6798 & 0.7339 & 1057.8780 \\
+Swin estándar & \textbf{0.7033} & 0.7384 & 0.5625 & \textbf{927.6742} \\
+ViT grande & 0.5408 & 0.6646 & 0.0 & 2407.9015 \\
+Swin grande & 0.5558 & 0.6645 & 0.0532 & 2715.1977 \\
+Quadtree + CNN & 0.4896 & 0.5523 & 0.0 & 6421.7091 \\
+Quadtree + ViT & 0.2500 & 0.3353 & 0.0 & 34886.8623 \\
+Sliding Window CNN (64/32) & 0.4739 & 0.6384 & 0.8947 & 7742.3934 \\
+Sliding Window CNN (128/64) & 0.4762 & 0.5923 & 0.7146 & 7605.4753 \\
+Sliding Window CNN (128/128) & 0.4881 & 0.5800 & 0.3836 & 7568.2322 \\
+Sliding Window CNN (256/128) & 0.4588 & 0.5543 & 0.4795 & 7573.1301 \\
+Sliding Window ViT (64/32) & 0.2500 & 0.3353 & 0.0 & 9141.4042 \\
+\hline
+\end{tabular}
+\end{table}
+
+Se observa que el modelo Swin estándar obtiene el mejor desempeño y costo computacional. Los enfoques jerárquicos y por ventanas presentan un rendimiento inferior, con un costo computacional considerablemente mayor, especialmente al emplear clasificadores basados en transformers.
+
+\subsection{Resultados con aumentación combinada (2 geométricas, 2 fotométricas, 1 SEM)}
+
+La Tabla~\ref{tab:results_combined_2geo} resume los resultados al aplicar una estrategia de aumentación combinada moderada.
+
+\begin{table}[ht]
+\centering
+\caption{Resultados con aumentación combinada (2G, 2F, 1SEM, $\times$2)}
+\label{tab:results_combined_2geo}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} & \textbf{Tiempo (s)} \\
+\hline
+ViT estándar & 0.5645 & 0.6264 & 0.1368 & 2997.8260 \\
+Swin estándar & \textbf{0.7500} & 0.7771 & 0.4783 & \textbf{2564.0437} \\
+ViT grande & 0.3986 & 0.6646 & 0.0 & 6924.8986 \\
+Swin grande & 0.7269 & 0.7619 & 0.4766 & 7674.9682 \\
+\hline
+\end{tabular}
+\end{table}
+
+La aumentación beneficia de forma clara al Swin Transformer, especialmente en su variante estándar, mientras que los modelos ViT grandes muestran una degradación del desempeño, sugiriendo una relación desfavorable entre complejidad y tamaño efectivo del dataset.
+
+\subsection{Resultados con aumentación combinada (3 geométricas, 1 fotométrica, 1 SEM)}
+
+Finalmente, la Tabla~\ref{tab:results_combined_3geo} presenta los resultados con una estrategia de aumentación geométrica más agresiva.
+
+\begin{table}[ht]
+\centering
+\caption{Resultados con aumentación combinada (3G, 1F, 1SEM, $\times$2)}
+\label{tab:results_combined_3geo}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Modelo} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} & \textbf{Tiempo (s)} \\
+\hline
+ViT estándar & 0.5742 & 0.6568 & 0.5771 & 3014.4913 \\
+Swin estándar & \textbf{0.7495} & 0.7738 & 0.5409 & \textbf{2575.2458} \\
+ViT grande & 0.4164 & 0.6643 & 0.0 & 6930.9403 \\
+Swin grande & 0.4593 & 0.6853 & 0.0736 & 7697.5314 \\
+\hline
+\end{tabular}
+\end{table}
+
+En este escenario, el Swin estándar mantiene un desempeño estable y elevado, mientras que el Swin grande sufre una degradación significativa, lo que refuerza la hipótesis de sobreajuste bajo restricciones de datos y cómputo.
+
+En conjunto, los resultados indican que los modelos Swin Transformer de complejidad moderada ofrecen el mejor equilibrio entre capacidad de representación, robustez frente a aumentación y eficiencia computacional dentro del contexto evaluado.
+
+
+
+\subsection{Análisis de Curvas de Aprendizaje}
+
+Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
+
+
+\subsection{Impacto de la Aumentación en Swin Transformer}
+
+Para aislar el efecto de la aumentación de datos en el rendimiento del mejor modelo identificado (Swin Transformer Estándar), se consolidan los resultados obtenidos bajo las distintas estrategias evaluadas en la Tabla~\ref{tab:swin_augmentation_comparison}.
+
+\begin{table}[h]
+\centering
+\caption{Comparativa de Swin Transformer bajo distintas estrategias de aumentación}
+\label{tab:swin_augmentation_comparison}
+\begin{tabular}{lccc}
+\hline
+\textbf{Estrategia} & \textbf{F1-score} & \textbf{Accuracy} & \textbf{Mask Cohesion} \\ 
+\hline
+Identidad (Sin Aumentación) & 0.7033 & 0.7384 & 0.5625 \\
+Combinada 1 (2G, 2F, 1SEM) & \textbf{0.7500} & \textbf{0.7771} & 0.4783 \\
+Combinada 2 (3G, 1F, 1SEM) & 0.7495 & 0.7738 & 0.5409 \\
+\hline
+\end{tabular}
+\end{table}
+
+Se observa una mejora consistente y significativa al introducir técnicas de aumentación. El F1-score experimenta un incremento de aproximadamente 5 puntos porcentuales (de 0.7033 a 0.7500), lo que valida la hipótesis de que la diversidad sintética es crucial para compensar la escasez de datos etiquetados en este dominio. Además, el modelo mantiene un alto grado de cohesión en las máscaras, lo que sugiere que las transformaciones aplicadas no degradan la estructura topológica de las predicciones.
+
+
+\subsection{Análisis de Curvas de Aprendizaje}
+
+Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
+
+\subsubsection{Comparativa de Validación por Aumentación}
+
+La Figura~\ref{fig:val_loss_combined} muestra la evolución del \emph{Validation Loss} para los distintos modelos evaluados utilizando la estrategia de aumentación combinada (2Geo+2Photo+1SEM).
+
+Se observa un comportamiento interesante en los modelos grandes. El Swin Large (línea roja), a pesar de su mayor capacidad, no logra reducir el \emph{Validation Loss} al mismo ritmo que su contraparte estándar, posiblemente debido a que la cantidad de datos, aun con aumentación, sigue siendo insuficiente para saturar la capacidad del modelo sin un ajuste más fino de hiperparámetros.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{val_loss_combined_2geo.png}
+    \caption{Comparativa del \emph{Validation Loss} a lo largo de las épocas con aumentación combinada (2Geo+2Photo+1SEM).}
+    \label{fig:val_loss_combined}
+\end{figure}
+
+\subsubsection{Análisis de Sobreajuste en Modelos Swin}
+
+Un fenómeno particular se observó en el escenario de aumentación combinada \path{Combined_2Geo_2Photo_1SEM_x2}, comparando el Swin Standard y el Swin Large. La Figura~\ref{fig:overfitting_analysis} ilustra las curvas de \emph{Training Loss} vs. \emph{Validation Loss} para ambos casos.
+
+\begin{itemize}
+    \item Swin Standard (Fig.~\ref{fig:swin_std_tv}): Este modelo muestra un comportamiento clásico de \emph{overfitting} a partir de cierta etapa. El \emph{Training Loss} (línea azul) disminuye drásticamente, convergiendo cada vez mas a cero, mientras que el \emph{Validation Loss} (línea naranja) se estabiliza y comienza a divergir ligeramente o estancarse. Esto indica que el modelo, con su capacidad moderada, es capaz de memorizar eficazmente el conjunto de entrenamiento aumentado, pero esta memorización deja de traducirse en mejoras de generalización.
+    
+    \item Swin Large (Fig.~\ref{fig:swin_large_tv}): En contraste, el modelo grande muestra una dinámica diferente. Su \emph{Training Loss} no disminuye tan abruptamente como en el modelo estándar. Esto sugiere que el modelo más grande podría beneficiarse más de un entrenamiento más prolongado y de un volumen de datos aún mayor para desbloquear su potencial, mientras que el modelo estándar alcanza su techo de rendimiento (y comienza a sobreajustarse) más temprano.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \subfloat[Swin Standard: Train vs Val]{
+        \includegraphics[width=0.7\linewidth]{train_val_swin_std.png}
+        \label{fig:swin_std_tv}}
+    \\
+    \subfloat[Swin Large: Train vs Val]{
+        \includegraphics[width=0.7\linewidth]{train_val_swin_large.png}
+        \label{fig:swin_large_tv}}
+    \caption{Análisis de curvas de entrenamiento y validación bajo aumentación combinada. Se observa un \emph{overfitting} más marcado en la caída del \emph{Training Loss} del modelo estándar en comparación con el modelo grande.}
+    \label{fig:overfitting_analysis}
+\end{figure}
+
+\subsection{Análisis de Escalabilidad de Datos}
+
+
+Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo. Este análisis se llevó a cabo utilizando el modelo \emph{Swin Transformer} en su configuración estándar, entrenado con subconjuntos del dataset original sin aplicar técnicas de aumentación. El objetivo fue evaluar la capacidad de aprendizaje intrínseca de la arquitectura frente a la estricta escasez de datos.
+
+La Figura~\ref{fig:loss_vs_data} ilustra la evolución de la pérdida (\emph{loss}) mínima alcanzada en validación en función del porcentaje de datos disponibles. Se observa una clara tendencia decreciente en la pérdida a medida que aumenta el tamaño del dataset, lo cual confirma que el modelo no ha saturado su capacidad de aprendizaje (no ha alcanzado un \emph{plateau} de rendimiento por falta de parámetros) y se beneficiaría significativamente de la incorporación de más muestras etiquetadas. Esto justifica empíricamente la necesidad crítica de las estrategias de aumentación implementadas en este trabajo para simular un régimen de datos más abundante y explotar el potencial de la arquitectura.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{loss_vs_data_size.png}
+    \caption{Relación entre el tamaño del dataset de entrenamiento y la pérdida mínima en validación. La tendencia indica que el aumento en la disponibilidad de datos contribuye consistentemente a la reducción del error del modelo.}
+    \label{fig:loss_vs_data}
+\end{figure}
+
+Para visualizar el impacto cualitativo de este incremento en los datos, la Figura~\ref{fig:progression} muestra la evolución de las segmentaciones en una misma muestra de validación conforme se entrena el modelo con porcentajes crecientes del dataset (e.g., 20\%, 50\%, 80\%). Se aprecia cómo la definición de las zonas y la reducción de ruidos espurios mejora notablemente con mayor volumen de ejemplos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{progression.jpg}
+    \caption{Evolución cualitativa de la segmentación al aumentar el porcentaje de datos de entrenamiento. Se observa una mejora progresiva en la coherencia de las regiones detectadas.}
+    \label{fig:progression}
+\end{figure}
+
+
+\subsection{Evaluación Cualitativa en Test}
+
+Para complementar los resultados cuantitativos, se realizó una evaluación visual sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo-estrategia que demostró el mayor rendimiento global según la métrica F1-score: el Swin Transformer Estándar entrenado con la estrategia de Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM).
+
+La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por esta configuración óptima. La visualización se estructura en tres columnas para facilitar el cotejo directo: la primera columna muestra la imagen SEM original, capturando la textura compleja del material; la columna central exhibe la máscara de referencia (\emph{Ground Truth}) generada por expertos; y la tercera columna presenta la segmentación inferida por el modelo.
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth, height=0.95\textheight, keepaspectratio]{test_predictions.jpg}
+    \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo Swin Transformer final.}
+    \label{fig:test_predictions}
+\end{figure}
+
+El análisis detallado de estas imágenes revela que el modelo ha logrado aprender no solo la textura local, sino la topología de las fracturas. Se observa una notable precisión en la delimitación de las zonas dúctiles frente a las áreas frágiles, respetando los bordes irregulares característicos de estas morfologías. Incluso en regiones donde el contraste es bajo o la transición es sutil, el modelo mantiene una coherencia estructural alta, evitando la fragmentación excesiva y demostrando una generalización robusta ante datos no vistos.
+
+\subsection{Posibles Sesgos}
+
+La presente sección analiza los posibles sesgos presentes en los datos y su impacto sobre los modelos.
+
+El dataset de segmentación cuenta con 94 imágenes, de las cuales 73 son mayormente dúctiles y 21 mayormente frágiles. Esta distribución desigual puede inducir un sesgo hacia la predicción de la clase dúctil, afectando la generalización de los modelos.
+
+Los modelos jerárquicos o basados en ventanas deslizantes utilizan clasificadores entrenados en datasets externos, lo que puede introducir sesgos adicionales en la segmentación final, condicionando los resultados a la naturaleza de esos datos auxiliares.
+
+Adicionalmente, las máscaras de \emph{ground truth} no fueron creadas por usuarios expertos, lo que puede introducir inconsistencias o errores de etiquetado. Esto limita la fidelidad de las métricas de evaluación y puede sesgar el entrenamiento hacia patrones no totalmente representativos de la realidad.
+
+Estos factores deben considerarse al interpretar los resultados y al extrapolar las conclusiones a otros conjuntos de imágenes o condiciones experimentales.
+
+
+\section{Limitaciones}
+
+El presente estudio está sujeto a varias limitaciones inherentes tanto a las características del dataset como a las restricciones computacionales del entorno de entrenamiento.
+
+El tamaño reducido del dataset de segmentación (94 imágenes SEM) constituye una limitación fundamental. Aun cuando se aplicaron estrategias de aumentación para incrementar la diversidad efectiva de los datos, estas transformaciones no sustituyen completamente la variabilidad morfológica y topológica que se obtendría con un mayor número de muestras reales. Adicionalmente, el desbalance entre clases —con una predominancia de regiones dúctiles frente a frágiles— introduce un sesgo estructural en el aprendizaje.
+
+La resolución variable de las imágenes SEM y la necesidad de redimensionamiento para ciertos análisis introducen una posible pérdida de información espacial, lo que puede afectar la delimitación precisa de bordes complejos en las máscaras de segmentación.
+
+En cuanto al aspecto computacional, los experimentos estuvieron condicionados por el entorno de Kaggle, con acceso a una GPU NVIDIA Tesla P100. Esta restricción impuso límites en la exploración de hiperparámetros, el tamaño de batch y la duración del entrenamiento. En consecuencia, no fue posible realizar búsquedas exhaustivas ni entrenamientos prolongados que podrían arrojar mejores resultados
+
+Asimismo, las limitaciones de memoria y tiempo de ejecución restringieron la evaluación sistemática de múltiples configuraciones de aumentación para los enfoques basados en Quadtree y Sliding Window, los cuales presentan un costo computacional significativamente superior debido a su naturaleza jerárquica o exhaustiva.
+
+Estas limitaciones deben considerarse al interpretar los resultados y motivan futuras extensiones del trabajo orientadas a la incorporación de datasets más extensos, recursos computacionales más robustos y estrategias de entrenamiento más exhaustivas.
+
+
+\section{Conclusiones}
+
+En este trabajo se evaluaron distintas arquitecturas y estrategias de segmentación aplicadas a imágenes SEM bajo un escenario de datos limitados, analizando tanto el desempeño cuantitativo como el comportamiento cualitativo de los modelos.
+
+Los resultados muestran de forma consistente que el \emph{Swin Transformer} en su configuración estándar ofrece el mejor equilibrio entre capacidad de representación, robustez y eficiencia computacional. Este modelo alcanza los valores más altos de \emph{F1-score} y \emph{accuracy} en todos los escenarios evaluados, manteniendo además una adecuada cohesión de las máscaras segmentadas.
+
+Las estrategias de aumentación de datos resultan determinantes para mejorar la generalización del modelo. En particular, las configuraciones combinadas permiten incrementar el \emph{F1-score} en aproximadamente cinco puntos porcentuales respecto al entrenamiento sin aumentación, sin comprometer la coherencia estructural de las predicciones. Este efecto confirma la importancia de la diversidad sintética para compensar la escasez de muestras etiquetadas en este dominio.
+
+Los enfoques alternativos basados en \emph{Quadtree} y \emph{Sliding Windows} muestran un rendimiento inferior y un costo computacional significativamente mayor, especialmente cuando emplean clasificadores basados en transformers, lo que limita su viabilidad práctica frente a modelos de segmentación end-to-end.
+
+El análisis de curvas de aprendizaje y de escalabilidad con respecto al volumen de datos indica que el Swin Transformer estándar no ha saturado su capacidad de aprendizaje y se beneficiaría de conjuntos de datos más extensos, reforzando la relevancia de la aumentación y la recolección de nuevas muestras.
+
+En conjunto, los resultados posicionan al Swin Transformer de complejidad moderada, entrenado con una estrategia de aumentación adecuada, como la opción más efectiva para la segmentación de zonas frágiles y dúctiles en imágenes SEM dentro del contexto evaluado. Como trabajo futuro, se plantea la incorporación de datasets más amplios y la exploración de esquemas híbridos que integren información multiescala de forma más eficiente.
+
+\bibliographystyle{ieeetr}
+\bibliography{references}
+
+\end{document}

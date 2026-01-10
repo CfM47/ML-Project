@@ -1,0 +1,103 @@
+{
+  "Aug_Identity_K5": {
+    "ViT_Model_Node": {
+      "mean_f1": 0.5977702590091415,
+      "mean_accuracy": 0.6798369178995054,
+      "mean_mask_cohesion": 0.7339181286549707
+    },
+    "Swin_Model_Node": {
+      "mean_f1": 0.7033482574757579,
+      "mean_accuracy": 0.7384132340637564,
+      "mean_mask_cohesion": 0.5625730994152047
+    },
+    "ViT_Big_Model_Node": {
+      "mean_f1": 0.54088708387608,
+      "mean_accuracy": 0.6646574410778736,
+      "mean_mask_cohesion": 0.0
+    },
+    "Swin_Big_Model_Node": {
+      "mean_f1": 0.5558194350390065,
+      "mean_accuracy": 0.6645857671548051,
+      "mean_mask_cohesion": 0.05321637426900585
+    },
+    "Quadtree-CNNModel_Model_Node": {
+      "mean_f1": 0.4896454933310129,
+      "mean_accuracy": 0.5523209443566395,
+      "mean_mask_cohesion": 0.0
+    },
+    "Quadtree-ViTModel_Model_Node": {
+      "mean_f1": 0.2500604103597349,
+      "mean_accuracy": 0.335345458984375,
+      "mean_mask_cohesion": 0.0
+    },
+    "SlidingWindow-CNN_W64_S32": {
+      "mean_f1": 0.4739060268320078,
+      "mean_accuracy": 0.6384033560055739,
+      "mean_mask_cohesion": 0.8947368421052632
+    },
+    "SlidingWindow-CNN_W128_S64": {
+      "mean_f1": 0.4762290421966582,
+      "mean_accuracy": 0.5923260828207808,
+      "mean_mask_cohesion": 0.7146198830409356
+    },
+    "SlidingWindow-CNN_W128_S128": {
+      "mean_f1": 0.48812028274215996,
+      "mean_accuracy": 0.5800832737259001,
+      "mean_mask_cohesion": 0.38362573099415204
+    },
+    "SlidingWindow-CNN_W256_S128": {
+      "mean_f1": 0.4588851539238294,
+      "mean_accuracy": 0.554397065458242,
+      "mean_mask_cohesion": 0.47953216374269003
+    },
+    "SlidingWindow-ViT_W64_S32": {
+      "mean_f1": 0.2500604103597349,
+      "mean_accuracy": 0.335345458984375,
+      "mean_mask_cohesion": 0.0
+    }
+  },
+  "Combined_2Geo_2Photo_1SEM_x2": {
+    "ViT_Model_Node": {
+      "mean_f1": 0.5645844631911766,
+      "mean_accuracy": 0.6264295856855069,
+      "mean_mask_cohesion": 0.13684210526315788
+    },
+    "Swin_Model_Node": {
+      "mean_f1": 0.7500971147269837,
+      "mean_accuracy": 0.7771304214209841,
+      "mean_mask_cohesion": 0.4783625730994152
+    },
+    "ViT_Big_Model_Node": {
+      "mean_f1": 0.3986882890655715,
+      "mean_accuracy": 0.6646432976973684,
+      "mean_mask_cohesion": 0.0
+    },
+    "Swin_Big_Model_Node": {
+      "mean_f1": 0.726913598225204,
+      "mean_accuracy": 0.7619012933028372,
+      "mean_mask_cohesion": 0.47660818713450287
+    }
+  },
+  "Combined_3Geo_1Photo_1SEM_x2": {
+    "ViT_Model_Node": {
+      "mean_f1": 0.57422052614887,
+      "mean_accuracy": 0.6568416528534471,
+      "mean_mask_cohesion": 0.5771929824561404
+    },
+    "Swin_Model_Node": {
+      "mean_f1": 0.7495168637183569,
+      "mean_accuracy": 0.7738129665977077,
+      "mean_mask_cohesion": 0.5409356725146199
+    },
+    "ViT_Big_Model_Node": {
+      "mean_f1": 0.41646387969438753,
+      "mean_accuracy": 0.6643644634046053,
+      "mean_mask_cohesion": 0.0
+    },
+    "Swin_Big_Model_Node": {
+      "mean_f1": 0.45934747134610276,
+      "mean_accuracy": 0.6853738483629728,
+      "mean_mask_cohesion": 0.07368421052631578
+    }
+  }
+}
