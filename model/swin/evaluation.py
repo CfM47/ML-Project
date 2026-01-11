@@ -87,7 +87,7 @@ def evaluate_model(
         if isinstance(values, list) and len(values) > 0:
             metrics[metric_name] = float(values[0])
         else:
-            metrics[metric_name] = float(values)  # type: ignore[arg-type]
+            metrics[metric_name] = float(values)
 
     # Compute F1 scores from Precision and Recall
     _add_f1_metrics(metrics)
@@ -138,7 +138,7 @@ def extract_metrics_from_evaluation(
         if isinstance(values, list) and len(values) > 0:
             metrics[metric_name] = float(values[0])
         else:
-            metrics[metric_name] = float(values)  # type: ignore[arg-type]
+            metrics[metric_name] = float(values)
     return metrics
 
 

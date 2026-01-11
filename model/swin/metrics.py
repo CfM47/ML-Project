@@ -302,7 +302,7 @@ class TrainingResult:
     histograms: Dict[str, "Figure"]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to JSON-serializable dictionary (excludes non-serializable objects)."""
+        """Convert to JSON-serializable dictionary (excludes non-serializable objects)."""  # noqa: E501
         return {
             "test_metrics": self.test_metrics.to_dict(),
         }
