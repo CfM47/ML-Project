@@ -416,3 +416,78 @@ def _plot_loss_curves(
     ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
+
+
+def plot_metric_histograms(
+    subset_distributions: Dict[str, List[float]],
+    full_metrics: Dict[str, float],
+    output_dir: Path | None = None,
+) -> Dict[str, Figure]:
+    """
+    Create individual histogram for each metric showing leave-two-out distribution.
+
+    Each histogram shows the distribution of metric values across all subsets,
+    with a vertical line indicating the full test set metric value.
+
+    Args:
+        subset_distributions: Dict mapping metric name to list of subset values.
+        full_metrics: Dict mapping metric name to full test set value.
+        output_dir: Optional directory to save histogram files.
+
+    Returns:
+        Dict mapping metric name to Figure.
+
+    """
+    histograms: Dict[str, Figure] = {}
+
+    for metric_name, values in subset_distributions.items():
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        # Plot histogram
+        ax.hist(
+            values,
+            bins=20,
+            color="steelblue",
+            edgecolor="white",
+            alpha=0.7,
+        )
+
+        # Add vertical line for full test set value
+        if metric_name in full_metrics:
+            full_value = full_metrics[metric_name]
+            ax.axvline(
+                full_value,
+                color="red",
+                linestyle="--",
+                linewidth=2,
+                label=f"Full test set: {full_value:.4f}",
+            )
+
+        # Calculate and display statistics
+        mean_val = float(np.mean(values))
+        std_val = float(np.std(values))
+        ax.axvline(
+            mean_val,
+            color="green",
+            linestyle="-",
+            linewidth=2,
+            label=f"Mean: {mean_val:.4f} (std: {std_val:.4f})",
+        )
+
+        ax.set_xlabel(metric_name)
+        ax.set_ylabel("Frequency")
+        ax.set_title(f"{metric_name} Distribution (Leave-Two-Out)")
+        ax.legend(loc="upper right")
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+
+        # Save if output directory provided
+        if output_dir:
+            output_path = output_dir / f"histogram_{metric_name}.png"
+            fig.savefig(output_path, dpi=150, bbox_inches="tight")
+            print(f"Saved histogram to {output_path}")
+
+        histograms[metric_name] = fig
+
+    return histograms
