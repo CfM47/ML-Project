@@ -206,7 +206,9 @@ En conclusión, esta metodología instrumentaliza el método científico: permit
 A continuación se proporciona información sobre los datasets utilizados.
 \subsection{Dataset de segmentación}
 
-El dataset principal utilizado para la tarea de segmentación está compuesto por 94 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
+El dataset principal utilizado para la tarea de segmentación está compuesto por 109 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
+
+De este conjunto, 15 imágenes fueron seleccionadas aleatoriamente y reservadas exclusivamente como conjunto de prueba independiente (\emph{test set}). Dicho subconjunto no fue utilizado durante ninguna etapa de entrenamiento, validación ni análisis exploratorio, y se empleó únicamente para la evaluación final del modelo seleccionado luego de la experimentación. Todos los análisis y la experimentación se realizan íntegramente sobre el subconjunto restante de 94 imágenes.
 
 Las máscaras de referencia delimitan dos morfologías de fractura fundamentales: zonas de comportamiento frágil y zonas de comportamiento dúctil. A nivel global, el conjunto presenta un desbalance significativo, con 73 imágenes donde predomina la fractura dúctil y 21 imágenes con mayor presencia de fractura frágil. Esta distribución refleja la naturaleza del material analizado y constituye un desafío adicional para la generalización del modelo.
 
@@ -216,7 +218,7 @@ Con el objetivo de caracterizar la distribución espacial de las clases, se cons
 
 \begin{figure}[H]
     \centering
-    \includegraphics{heatmap.png}
+    \includegraphics[width=0.5\linewidth]{heatmap.png}
     \caption{Mapa de calor de la distribución espacial de las clases dúctil y frágil, obtenido a partir de la superposición de las máscaras de segmentación redimensionadas a $512 \times 512$ píxeles.}
     \label{fig:heatmap_ductil}
 \end{figure}
