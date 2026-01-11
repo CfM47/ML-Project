@@ -1,9 +1,15 @@
 """Metrics dataclasses for tracking training and validation results."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+
+    from auto_ml.implementations.segmentators.swin import SwinModel
+    from auto_ml.interfaces import MaskPair
 
 
 @dataclass
@@ -251,3 +257,52 @@ class PercentageMetrics:
         if not self.fold_metrics:
             return 0.0
         return float(np.std([fm.final_val_loss for fm in self.fold_metrics]))
+
+
+@dataclass
+class SubsetMetrics:
+    """Store leave-two-out evaluation metrics."""
+
+    subset_size: int
+    num_subsets: int
+
+    # Full test set metrics: {"Accuracy": 0.85, ...}
+    full_metrics: Dict[str, float]
+
+    # Mean across subsets: {"Accuracy": 0.84, ...}
+    subset_means: Dict[str, float]
+
+    # Std across subsets: {"Accuracy": 0.02, ...}
+    subset_stds: Dict[str, float]
+
+    # Full distributions: {"Accuracy": [0.84, 0.86, ...], ...}
+    subset_distributions: Dict[str, List[float]]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "subset_size": self.subset_size,
+            "num_subsets": self.num_subsets,
+            "full_metrics": self.full_metrics,
+            "subset_means": self.subset_means,
+            "subset_stds": self.subset_stds,
+            "subset_distributions": self.subset_distributions,
+        }
+
+
+@dataclass
+class TrainingResult:
+    """Store all outputs from final training."""
+
+    model: "SwinModel"
+    test_metrics: SubsetMetrics
+    mask_pairs: List["MaskPair"]
+    predictions_figure: "Figure"
+    loss_curves_figure: "Figure | None"
+    histograms: Dict[str, "Figure"]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to JSON-serializable dictionary (excludes non-serializable objects)."""
+        return {
+            "test_metrics": self.test_metrics.to_dict(),
+        }

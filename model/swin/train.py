@@ -6,6 +6,7 @@ Provide two entry points:
 2. run_final_training: Train on 100% data and evaluate on test set
 """
 
+import json
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -17,9 +18,20 @@ from auto_ml.implementations import SwinModel, load_dataset_from_directories
 from auto_ml.interfaces import MaskPair, SegmentationDatasetInterface
 from model.swin.config import SwinTrainingConfig
 from model.swin.data import create_augmentator, create_kfold_splits, subsample_dataset
-from model.swin.evaluation import create_evaluator, evaluate_model
-from model.swin.metrics import FoldMetrics, PercentageMetrics, TrainingHistory
+from model.swin.evaluation import (
+    create_evaluator,
+    evaluate_leave_two_out,
+    evaluate_model,
+)
+from model.swin.metrics import (
+    FoldMetrics,
+    PercentageMetrics,
+    SubsetMetrics,
+    TrainingHistory,
+    TrainingResult,
+)
 from model.swin.visualization import (
+    plot_metric_histograms,
     plot_progression_grid,
     plot_results,
     plot_training_loss_curves,
@@ -124,11 +136,12 @@ def run_final_training(
     test_unlabeled_dir: str | Path,
     test_labeled_dir: str | Path,
     config: SwinTrainingConfig | None = None,
-) -> Tuple[SwinModel, Dict[str, float], List[MaskPair], Figure, Figure | None]:
+) -> TrainingResult:
     """
     Train final model on 100% data and evaluate on test set.
 
-    Save model weights and prediction visualizations to output directory.
+    Save model weights, prediction visualizations, metric histograms, and
+    results JSON to output directory.
 
     Args:
         train_unlabeled_dir: Directory with unlabeled training images.
@@ -138,8 +151,7 @@ def run_final_training(
         config: Training configuration. Uses defaults if None.
 
     Returns:
-        Tuple of (trained_model, test_metrics, test_mask_pairs, predictions Figure,
-        loss_curves Figure or None if history validation failed).
+        TrainingResult containing model, metrics, mask_pairs, and figures.
 
     """
     if config is None:
@@ -166,7 +178,7 @@ def run_final_training(
     # Train final model
     model, training_history = _train_final_model(train_dataset, config)
 
-    # Evaluate on test set
+    # Evaluate on test set with leave-two-out analysis
     test_metrics, test_mask_pairs = _evaluate_on_test(
         model,
         test_dataset,
@@ -195,7 +207,27 @@ def run_final_training(
             output_path=loss_curves_path,
         )
 
-    return model, test_metrics, test_mask_pairs, predictions_fig, loss_curves_fig
+    # Plot metric histograms
+    histograms = plot_metric_histograms(
+        test_metrics.subset_distributions,
+        test_metrics.full_metrics,
+        output_dir=config.output_dir,
+    )
+
+    # Build result object
+    result = TrainingResult(
+        model=model,
+        test_metrics=test_metrics,
+        mask_pairs=test_mask_pairs,
+        predictions_figure=predictions_fig,
+        loss_curves_figure=loss_curves_fig,
+        histograms=histograms,
+    )
+
+    # Save results JSON
+    _save_results_json(result, config.output_dir / "results.json")
+
+    return result
 
 
 # ==============================================================================
@@ -352,9 +384,9 @@ def _evaluate_on_test(
     model: SwinModel,
     test_dataset: SegmentationDatasetInterface,
     train_dataset: SegmentationDatasetInterface,
-) -> Tuple[Dict[str, float], List[MaskPair]]:
+) -> Tuple[SubsetMetrics, List[MaskPair]]:
     """
-    Evaluate trained model on test dataset (no augmentation).
+    Evaluate trained model on test dataset with leave-two-out analysis.
 
     Args:
         model: Trained SwinModel.
@@ -362,21 +394,47 @@ def _evaluate_on_test(
         train_dataset: Training dataset for Mask_Cohesion autoencoder reference.
 
     Returns:
-        Tuple of (metrics_dict, mask_pairs).
+        Tuple of (SubsetMetrics, mask_pairs).
 
     """
     print("\n" + "=" * 60)
     print("Evaluating on test set")
     print("=" * 60)
 
+    # Create evaluator (trained on training set for Mask_Cohesion)
     evaluator = create_evaluator(train_dataset)
-    metrics, mask_pairs = evaluate_model(model, test_dataset, evaluator)
 
-    print("\nTest Metrics:")
-    for metric_name, value in sorted(metrics.items()):
+    # Evaluate full test set
+    full_metrics, mask_pairs = evaluate_model(model, test_dataset, evaluator)
+
+    print("\nFull Test Set Metrics:")
+    for metric_name, value in sorted(full_metrics.items()):
         print(f"  {metric_name}: {value:.4f}")
 
-    return metrics, mask_pairs
+    # Perform leave-two-out evaluation
+    subset_means, subset_stds, subset_distributions = evaluate_leave_two_out(
+        mask_pairs,
+        evaluator,
+    )
+
+    # Build SubsetMetrics
+    n = len(mask_pairs)
+    subset_metrics = SubsetMetrics(
+        subset_size=n - 2,
+        num_subsets=n * (n - 1) // 2,
+        full_metrics=full_metrics,
+        subset_means=subset_means,
+        subset_stds=subset_stds,
+        subset_distributions=subset_distributions,
+    )
+
+    print("\nLeave-Two-Out Summary:")
+    for metric_name in sorted(subset_means.keys()):
+        mean_val = subset_means[metric_name]
+        std_val = subset_stds[metric_name]
+        print(f"  {metric_name}: {mean_val:.4f} ± {std_val:.4f}")
+
+    return subset_metrics, mask_pairs
 
 
 # ==============================================================================
@@ -402,6 +460,14 @@ def _save_model(model: SwinModel, path: Path) -> None:
     """Save model state dict to disk."""
     torch.save(model.model.state_dict(), path)
     print(f"Saved model to {path}")
+
+
+def _save_results_json(result: TrainingResult, path: Path) -> None:
+    """Save training results to JSON file."""
+    results_dict = result.to_dict()
+    with open(path, "w") as f:
+        json.dump(results_dict, f, indent=2)
+    print(f"Saved results to {path}")
 
 
 def _collect_progression_predictions(

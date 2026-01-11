@@ -85,9 +85,9 @@ def evaluate_model(
     metrics: Dict[str, float] = {}
     for metric_name, values in evaluation_results.items():
         if isinstance(values, list) and len(values) > 0:
-            metrics[metric_name] = values[0]
+            metrics[metric_name] = float(values[0])
         else:
-            metrics[metric_name] = float(values)
+            metrics[metric_name] = float(values)  # type: ignore[arg-type]
 
     # Compute F1 scores from Precision and Recall
     _add_f1_metrics(metrics)
@@ -136,7 +136,71 @@ def extract_metrics_from_evaluation(
     metrics: Dict[str, float] = {}
     for metric_name, values in evaluation_results.items():
         if isinstance(values, list) and len(values) > 0:
-            metrics[metric_name] = values[0]
+            metrics[metric_name] = float(values[0])
         else:
-            metrics[metric_name] = float(values)
+            metrics[metric_name] = float(values)  # type: ignore[arg-type]
     return metrics
+
+
+def evaluate_leave_two_out(
+    mask_pairs: List[MaskPair],
+    evaluator: EvaluatorNode,
+) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, List[float]]]:
+    """
+    Evaluate all leave-two-out subsets for robustness analysis.
+
+    For n samples, evaluate all C(n,2) subsets of size n-2.
+
+    Args:
+        mask_pairs: List of (predicted_mask, real_mask) tuples from full test set.
+        evaluator: Configured EvaluatorNode for computing metrics.
+
+    Returns:
+        Tuple of (subset_means, subset_stds, subset_distributions).
+
+    """
+    import itertools
+
+    import numpy as np
+
+    n = len(mask_pairs)
+    subset_size = n - 2
+    num_subsets = n * (n - 1) // 2  # C(n, 2)
+
+    print(
+        f"Leave-two-out evaluation: {num_subsets} subsets of size "
+        f"{subset_size} from {n} samples",
+    )
+
+    # Generate all combinations of 2 indices to exclude
+    exclude_pairs = list(itertools.combinations(range(n), 2))
+
+    # Initialize distributions dict
+    distributions: Dict[str, List[float]] = {}
+
+    for exclude_idx_pair in exclude_pairs:
+        # Create subset by excluding two samples
+        subset = [mask_pairs[i] for i in range(n) if i not in exclude_idx_pair]
+
+        # Evaluate subset
+        evaluation_results = evaluator.evaluate([subset])
+
+        # Extract metrics
+        subset_metrics = extract_metrics_from_evaluation(evaluation_results)
+        _add_f1_metrics(subset_metrics)
+
+        # Add to distributions
+        for metric_name, value in subset_metrics.items():
+            if metric_name not in distributions:
+                distributions[metric_name] = []
+            distributions[metric_name].append(value)
+
+    # Compute means and stds
+    subset_means: Dict[str, float] = {}
+    subset_stds: Dict[str, float] = {}
+
+    for metric_name, values in distributions.items():
+        subset_means[metric_name] = float(np.mean(values))
+        subset_stds[metric_name] = float(np.std(values))
+
+    return subset_means, subset_stds, distributions
