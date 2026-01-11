@@ -1,9 +1,10 @@
 """
 Swin Segmentation Training and Validation Module.
 
-Provide two entry points:
+Provide three entry points:
 1. run_percentage_validation: K-fold cross-validation with varying training percentages
 2. run_final_training: Train on 100% data and evaluate on test set
+3. run_evaluation_only: Load pretrained model and evaluate on test set
 """
 
 import json
@@ -178,56 +179,78 @@ def run_final_training(
     # Train final model
     model, training_history = _train_final_model(train_dataset, config)
 
-    # Evaluate on test set with leave-two-out analysis
-    test_metrics, test_mask_pairs = _evaluate_on_test(
-        model,
-        test_dataset,
-        train_dataset,
-    )
-
     # Save model
     model_path = config.output_dir / "model.pt"
     _save_model(model, model_path)
 
-    # Visualize predictions
-    viz_path = config.output_dir / "test_predictions.png"
-    predictions_fig = visualize_predictions(
+    # Evaluate model and save results
+    return _evaluate_model(
+        model,
+        train_dataset,
         test_dataset,
-        test_mask_pairs,
-        num_samples=config.num_test_visualizations,
-        output_path=viz_path,
+        config,
+        training_history,
     )
 
-    # Plot training loss curves if history is valid
-    loss_curves_fig: Figure | None = None
-    if training_history is not None:
-        loss_curves_path = config.output_dir / "training_loss_curves.png"
-        loss_curves_fig = plot_training_loss_curves(
-            training_history,
-            output_path=loss_curves_path,
-        )
 
-    # Plot metric histograms
-    histograms = plot_metric_histograms(
-        test_metrics.subset_distributions,
-        test_metrics.full_metrics,
-        output_dir=config.output_dir,
+def run_evaluation_only(
+    train_unlabeled_dir: str | Path,
+    train_labeled_dir: str | Path,
+    test_unlabeled_dir: str | Path,
+    test_labeled_dir: str | Path,
+    pretrained_model_path: str | Path,
+    config: SwinTrainingConfig | None = None,
+) -> TrainingResult:
+    """
+    Load a pretrained model and evaluate on test set.
+
+    Entry point for evaluating without training. Perform leave-two-out analysis
+    and save prediction visualizations, metric histograms, and results JSON.
+
+    Args:
+        train_unlabeled_dir: Directory with unlabeled training images.
+        train_labeled_dir: Directory with labeled training masks.
+        test_unlabeled_dir: Directory with unlabeled test images.
+        test_labeled_dir: Directory with labeled test masks.
+        pretrained_model_path: Path to pretrained model weights (.pt file).
+        config: Training configuration. Uses defaults if None.
+
+    Returns:
+        TrainingResult containing model, metrics, mask_pairs, and figures.
+
+    """
+    if config is None:
+        config = SwinTrainingConfig()
+
+    # Setup output directory
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load datasets
+    print("Loading training dataset...")
+    train_dataset = load_dataset_from_directories(
+        Path(train_unlabeled_dir),
+        Path(train_labeled_dir),
     )
+    print(f"Loaded {len(train_dataset)} training samples")
 
-    # Build result object
-    result = TrainingResult(
-        model=model,
-        test_metrics=test_metrics,
-        mask_pairs=test_mask_pairs,
-        predictions_figure=predictions_fig,
-        loss_curves_figure=loss_curves_fig,
-        histograms=histograms,
+    print("Loading test dataset...")
+    test_dataset = load_dataset_from_directories(
+        Path(test_unlabeled_dir),
+        Path(test_labeled_dir),
     )
+    print(f"Loaded {len(test_dataset)} test samples")
 
-    # Save results JSON
-    _save_results_json(result, config.output_dir / "results.json")
+    # Load pretrained model
+    model = _load_model(Path(pretrained_model_path), config)
 
-    return result
+    # Evaluate model (no training history since we loaded a pretrained model)
+    return _evaluate_model(
+        model,
+        train_dataset,
+        test_dataset,
+        config,
+        training_history=None,
+    )
 
 
 # ==============================================================================
@@ -437,6 +460,77 @@ def _evaluate_on_test(
     return subset_metrics, mask_pairs
 
 
+def _evaluate_model(
+    model: SwinModel,
+    train_dataset: SegmentationDatasetInterface,
+    test_dataset: SegmentationDatasetInterface,
+    config: SwinTrainingConfig,
+    training_history: TrainingHistory | None = None,
+) -> TrainingResult:
+    """
+    Evaluate a model on test set with leave-two-out analysis.
+
+    Save predictions, histograms, and results JSON to output directory.
+
+    Args:
+        model: Trained or loaded SwinModel.
+        train_dataset: Training dataset for Mask_Cohesion autoencoder reference.
+        test_dataset: Test dataset to evaluate on.
+        config: Training configuration with output directory.
+        training_history: Optional training history for loss curves plot.
+
+    Returns:
+        TrainingResult containing model, metrics, mask_pairs, and figures.
+
+    """
+    # Evaluate on test set with leave-two-out analysis
+    test_metrics, test_mask_pairs = _evaluate_on_test(
+        model,
+        test_dataset,
+        train_dataset,
+    )
+
+    # Visualize predictions
+    viz_path = config.output_dir / "test_predictions.png"
+    predictions_fig = visualize_predictions(
+        test_dataset,
+        test_mask_pairs,
+        num_samples=config.num_test_visualizations,
+        output_path=viz_path,
+    )
+
+    # Plot training loss curves if history is valid
+    loss_curves_fig: Figure | None = None
+    if training_history is not None:
+        loss_curves_path = config.output_dir / "training_loss_curves.png"
+        loss_curves_fig = plot_training_loss_curves(
+            training_history,
+            output_path=loss_curves_path,
+        )
+
+    # Plot metric histograms
+    histograms = plot_metric_histograms(
+        test_metrics.subset_distributions,
+        test_metrics.full_metrics,
+        output_dir=config.output_dir,
+    )
+
+    # Build result object
+    result = TrainingResult(
+        model=model,
+        test_metrics=test_metrics,
+        mask_pairs=test_mask_pairs,
+        predictions_figure=predictions_fig,
+        loss_curves_figure=loss_curves_fig,
+        histograms=histograms,
+    )
+
+    # Save results JSON
+    _save_results_json(result, config.output_dir / "results.json")
+
+    return result
+
+
 # ==============================================================================
 # Model Utilities
 # ==============================================================================
@@ -468,6 +562,14 @@ def _save_results_json(result: TrainingResult, path: Path) -> None:
     with open(path, "w") as f:
         json.dump(results_dict, f, indent=2)
     print(f"Saved results to {path}")
+
+
+def _load_model(path: Path, config: SwinTrainingConfig) -> SwinModel:
+    """Load model weights from disk."""
+    model = _create_swin_model(config)
+    model.model.load_state_dict(torch.load(path, weights_only=True))
+    print(f"Loaded model from {path}")
+    return model
 
 
 def _collect_progression_predictions(
