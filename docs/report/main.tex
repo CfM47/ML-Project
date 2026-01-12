@@ -240,64 +240,47 @@ De forma complementaria, se exploran estrategias de segmentación indirecta que 
 
 Este planteamiento unifica modelos de segmentación directa y estrategias guiadas por clasificación bajo un mismo marco conceptual, facilitando la comparación entre enfoques de distinta naturaleza y sentando las bases para la incorporación progresiva de métodos alternativos de particionado espacial en subsecciones posteriores.
 
-\subsection{Vision Transformer (ViT)}
-% - Arquitectura general
-% - División en patches
-% - Mecanismo de atención
-% - Adaptación para segmentación semántica
-% - Hiperparámetros utilizados
 
-La estrategia de segmentación basada en \emph{Vision Transformer} (ViT) se diseñó siguiendo un enfoque modular que separa explícitamente la definición arquitectónica del modelo del proceso de entrenamiento y evaluación. Esta decisión metodológica permite desacoplar los aspectos conceptuales del modelo de los detalles operativos, facilitando su integración en el framework de \emph{AutoML} y asegurando comparabilidad con otras estrategias de segmentación.
+\subsection{SETR-PUP (ViT Encoder)}
 
-\subsubsection{Arquitectura encoder--decoder}
+La estrategia de segmentación empleada corresponde a la arquitectura \emph{SEgmentation TRansformer} en su variante \emph{Progressive UPsampling} (SETR-PUP). Este modelo se aleja de las arquitecturas totalmente convolucionales (FCN) tradicionales al adoptar un \emph{Vision Transformer} (ViT) puro como codificador backbone para extraer características visuales, tratándolas como secuencias de parches.
 
-El modelo adopta una arquitectura de tipo \emph{encoder--decoder}, donde el encoder se basa en un Transformer y el decoder en una red neuronal convolucional. Esta combinación permite explotar la capacidad del mecanismo de autoatención para capturar dependencias globales, mientras que el decoder convolucional reconstruye la información espacial necesaria para una segmentación densa a nivel de píxel.
+\subsubsection{Encoder: Vision Transformer}
 
-El encoder transforma la imagen de entrada en una secuencia de representaciones latentes mediante un proceso de partición en parches no solapados. Cada parche es proyectado a un espacio de alta dimensionalidad, generando una secuencia de \emph{embeddings} que reemplaza la representación basada en píxeles. Dado que los Transformers carecen de noción explícita de orden espacial, se incorporan codificaciones posicionales aprendibles, las cuales preservan la información relativa a la localización de cada parche en la imagen original.
+El codificador se basa en una arquitectura de Transformer estándar. La imagen de entrada se divide en una secuencia de parches de tamaño fijo, que son aplanados y proyectados linealmente a un espacio de \emph{embeddings}. A esta secuencia se le suma una codificación posicional aprendible para conservar la información espacial relativa.
 
-Posteriormente, esta secuencia es procesada por múltiples capas de autoatención, donde cada parche puede intercambiar información con todos los demás. Este mecanismo permite construir representaciones con contexto global, capturando relaciones de largo alcance.
+Posteriormente, la secuencia es procesada por múltiples bloques de Transformer, que utilizan mecanismos de autoatención global ($Self-Attention$) para modelar dependencias de largo alcance entre todas las regiones de la imagen. A diferencia de las CNN, donde el campo receptivo crece gradualmente, el ViT permite que cada parche atienda a cualquier otro desde las primeras capas, capturando contexto global de manera efectiva. La salida del encoder es una secuencia de representaciones de características $\frac{H}{16} \times \frac{W}{16}$ (para un tamaño de parche de $16 \times 16$).
 
-\subsubsection{Decoder convolucional y reconstrucción espacial}
+\subsubsection{Decoder: Progressive Upsampling (PUP)}
 
-La salida del encoder, expresada como una secuencia de vectores latentes, es reestructurada nuevamente en forma de mapa bidimensional de características. A partir de esta representación de baja resolución espacial, el decoder convolucional realiza una reconstrucción progresiva hasta alcanzar la resolución original de la imagen.
+Para recuperar la resolución espacial original necesaria para la segmentación, SETR-PUP emplea un decodificador de muestreo progresivo. La secuencia de características del encoder se reconfigura primero en un mapa de características 2D de dimensiones $\frac{H}{16} \times \frac{W}{16} \times C$.
 
-Este proceso se lleva a cabo mediante una serie de etapas de refinamiento y reescalado, en las cuales se combinan convoluciones para la extracción local de características con operaciones de interpolación para el aumento gradual de la resolución. En la etapa final, una proyección lineal por píxel permite obtener, para cada clase, un mapa de activación que representa la pertenencia de cada píxel a las distintas regiones de interés.
+Este mapa de características de baja resolución se somete a un proceso de escalado iterativo. La estrategia PUP alterna capas convolucionales para reducir la profundidad de canales (halving) y operaciones de upsampling bilineal (x2) en múltiples etapas sucesivas. Específicamente, se realizan cuatro etapas de upsampling x2 para alcanzar la resolución original $H \times W$.
 
-\subsubsection{Integración en el esquema experimental}
+Este diseño evita el "cuello de botella" de upsampling directo de una sola vez que caracteriza a otras variantes (como SETR-Naïve), permitiendo una recuperación más suave y libre de artefactos de los detalles espaciales finos, crucial para delimitar bordes de fractura.
 
-La arquitectura ViT descrita se integra en el diseño experimental como un módulo autocontenido. 
-Durante el entrenamiento, se emplea un esquema supervisado estándar para segmentación multiclase, utilizando funciones de pérdida adecuadas para este tipo de problema y validación sobre datos no vistos para monitorear el desempeño. En la fase de inferencia, las salidas continuas del modelo son convertidas en máscaras discretas mediante una asignación por máxima activación, produciendo mapas de segmentación directamente comparables con las máscaras de referencia.
 
-Esta estrategia combina la capacidad de los Vision Transformers para modelar contexto global con la precisión espacial de decodificadores convolucionales, resultando adecuada para problemas de segmentación.
 
-\subsection{Swin Transformer}
+\subsection{Modified SETR-PUP (Swin Encoder)}
 
-El segmentador basado en \emph{Swin Transformer} se desarrolló siguiendo el mismo principio aplicado al modelo ViT: una separación estricta entre la arquitectura del modelo y la lógica de entrenamiento y evaluación. Esta coherencia de diseño garantiza modularidad, facilita la comparación experimental y permite integrar el modelo de manera transparente dentro del framework de AutoML.
+Como segunda estrategia de segmentación directa, se implementó una variante modificada de la arquitectura SETR-PUP descrita anteriormente. En este caso, se sustituye el backbone ViT estándar por un \emph{Swin Transformer}, manteniendo la estrategia de decodificación progresiva (PUP). Esta modificación busca aprovechar las ventajas de eficiencia computacional y modelado jerárquico del Swin Transformer frente al mecanismo de atención global del ViT.
 
-\subsubsection{Arquitectura encoder--decoder}
+\subsubsection{Encoder: Swin Transformer}
 
-Al igual que en el caso del ViT, el modelo adopta una arquitectura de tipo \emph{encoder--decoder}. Sin embargo, el encoder se basa en el Swin Transformer, una evolución de los Transformers para visión computacional que introduce propiedades jerárquicas y de localidad, tradicionalmente asociadas a las redes convolucionales.
+El codificador Swin Transformer introduce una jerarquía de características mediante el uso de \emph{Shifted Windows} (ventanas desplazadas). A diferencia del ViT, que calcula la atención entre todos los parches simultáneamente (complejidad cuadrática con respecto al tamaño de la imagen), Swin calcula la atención localmente dentro de ventanas no solapadas. La interacción entre ventanas se logra desplazándolas entre capas consecutivas.
 
-El encoder genera representaciones jerárquicas a múltiples escalas espaciales. A partir de la imagen de entrada, el modelo construye progresivamente un conjunto de mapas de características con resoluciones decrecientes, lo que permite capturar información tanto local como global. Este enfoque multiescala resulta especialmente adecuado para tareas de segmentación, donde coexisten detalles finos y estructuras de mayor tamaño.
+Esta arquitectura produce mapas de características jerárquicos a diferentes escalas (p. ej., $\frac{H}{4}, \frac{H}{8}, \frac{H}{16}, \frac{H}{32}$), similar a una CNN tradicional. Para esta implementación modificada de SETR-PUP, se extraen las características de la última etapa del encoder Swin, que contienen la información semántica más rica y abstracta.
 
-El mecanismo central del Swin Transformer es la autoatención restringida a ventanas locales, lo que reduce significativamente la complejidad computacional en comparación con la autoatención global. Para evitar la pérdida de información entre regiones disjuntas, estas ventanas se desplazan de manera alternada entre capas consecutivas, permitiendo que la información fluya entre distintas zonas de la imagen. De este modo, el modelo combina eficiencia computacional con una capacidad efectiva de modelar dependencias de largo alcance.
+\subsubsection{Integración con Decoder PUP}
 
-Adicionalmente, la arquitectura fue adaptada para operar sobre imágenes en escala de grises, lo que asegura compatibilidad con el tipo de datos empleado en este trabajo sin alterar los principios fundamentales del modelo.
+La salida del encoder Swin se conecta al decodificador Progressive Upsampling (PUP). Dado que la salida final del Swin Transformer puede tener una resolución espacial distinta (típicamente $\frac{H}{32}$) comparada con la del ViT estándar ($\frac{H}{16}$), la primera etapa del decodificador se adapta para realizar el upsampling necesario y alinear las dimensiones antes de proceder con la cascada de convoluciones y escalados progresivos.
 
-\subsubsection{Adaptación de resolución y decoder compartido}
+Al igual que en el modelo anterior, el decodificador reconstruye la máscara de segmentación a resolución completa mediante pasos alternados de convolución y upsampling, generando finalmente las predicciones de clase por píxel. Esta combinación (Swin + PUP) pretende balancear la capacidad de modelado global con una mayor eficiencia en el procesamiento de características locales.
 
-El encoder basado en Swin Transformer produce su representación final a una resolución espacial inferior a la utilizada por el decoder convolucional. Para resolver esta discrepancia, se introduce un módulo de adaptación intermedio que reescala las características extraídas por el encoder hasta la resolución esperada por el decoder.
+\subsubsection{Entrenamiento y Ajuste}
 
-Una vez ajustada la resolución, las características son procesadas por el mismo decoder convolucional utilizado en el modelo basado en ViT. Este decoder realiza una reconstrucción progresiva de la segmentación mediante etapas sucesivas de refinamiento y aumento de resolución, culminando en un mapa de segmentación denso a nivel de píxel. El uso de un decoder compartido evita la duplicación de componentes, mejora la mantenibilidad del sistema y asegura que las diferencias observadas en los resultados se deban principalmente al encoder y no a variaciones en la fase de reconstrucción.
+Ambos modelos (ViT-SETR y Swin-SETR) se entrenaron bajo un esquema supervisado utilizando funciones de pérdida estándar para segmentación semántica (Cross-Entropy). Se incorporaron mecanismos de \emph{early stopping} basados en métricas de validación para prevenir el sobreajuste, dado el tamaño limitado del dataset. La evaluación final se realiza sobre el conjunto de test reservado, utilizando métricas como IoU y Dice Score para comparar la fidelidad de las segmentaciones.
 
-\subsubsection{Entrenamiento, regularización y evaluación}
-
-El proceso de entrenamiento del modelo Swin incorpora monitoreo constante del desempeño.
-Un aspecto distintivo de esta estrategia es la incorporación de un mecanismo de \emph{early stopping} durante el entrenamiento. Este mecanismo monitoriza el desempeño sobre el conjunto de validación y detiene el proceso de optimización cuando no se observan mejoras durante un número predefinido de iteraciones consecutivas. De este modo, se reduce el riesgo de sobreajuste y se selecciona automáticamente el estado del modelo con mejor capacidad de generalización.
-
-En la fase de inferencia, el modelo genera mapas de activación multiclase que son transformados en máscaras de segmentación discretas de forma análoga al modelo ViT, asegurando consistencia.
-
-El segmentador basado en Swin Transformer combina eficiencia computacional, representación jerárquica multiescala y mecanismos de regularización explícitos, constituyendo una alternativa de alto nivel dentro del estado del arte para segmentación semántica en imágenes complejas.
 
 
 \subsection{Descomposición quadtree}
@@ -671,22 +654,22 @@ En esta sección se presentan los resultados obtenidos a partir de las distintas
 
 \subsection{Configuración de los modelos evaluados}
 
-Antes de analizar los resultados, se describen brevemente las configuraciones de los modelos utilizados:
+Antes de analizar los resultados, se describen brevemente las configuraciones de los codificadores (encoders) utilizados dentro de la arquitectura SETR-PUP:
 
-Se evaluaron dos configuraciones de segmentadores ViT:
+Se evaluaron dos configuraciones de encoders basados en \emph{ViT}:
 
 \begin{itemize}
-\item ViT estándar: dimensión del embedding de 256, profundidad de 6 capas, 8 cabezales de atención y una MLP interna de dimensión 512.
-\item ViT grande: dimensión del embedding de 512, profundidad de 12 capas, 16 cabezales de atención y una MLP de dimensión 2048.
+\item ViT-Encoder estándar: dimensión del embedding de 256, profundidad de 6 capas, 8 cabezales de atención y una MLP interna de dimensión 512.
+\item ViT-Encoder grande: dimensión del embedding de 512, profundidad de 12 capas, 16 cabezales de atención y una MLP de dimensión 2048.
 \end{itemize}
 
 Ambos modelos fueron entrenados durante 40 épocas con tamaño de batch fijo y bajo las mismas condiciones de optimización.
 
-De forma análoga, se consideraron dos variantes de Swin Transformer:
+De forma análoga, se consideraron dos variantes de encoders \emph{Swin Transformer}:
 
 \begin{itemize}
-\item Swin estándar: embedding inicial de 64 dimensiones, con una jerarquía de profundidades [2, 2, 6, 2] y número de cabezales [4, 8, 16, 32].
-\item Swin grande: embedding inicial de 128 dimensiones, una arquitectura más profunda [2, 2, 18, 2] y cabezales [8, 16, 32, 64].
+\item Swin-Encoder estándar: embedding inicial de 64 dimensiones, con una jerarquía de profundidades [2, 2, 6, 2] y número de cabezales [4, 8, 16, 32].
+\item Swin-Encoder grande: embedding inicial de 128 dimensiones, una arquitectura más profunda [2, 2, 18, 2] y cabezales [8, 16, 32, 64].
 \end{itemize}
 
 Los enfoques basados en \emph{Quadtree} y \emph{Sliding Window} utilizan clasificadores auxiliares (CNN o ViT) entrenados sobre datasets de clasificación independientes. Dado que el proceso de entrenamiento de estos modelos no depende directamente del dataset de segmentación, se optó por evaluar únicamente una configuración sin aumentación de datos sobre el dataset de segmentación, con el fin de reducir el costo computacional y evitar redundancias experimentales.
@@ -718,7 +701,7 @@ Sliding Window ViT (64/32) & 0.2500 & 0.3353 & 0.0 & 9141.4042 \\
 \end{tabular}
 \end{table}
 
-Se observa que el modelo Swin estándar obtiene el mejor desempeño y costo computacional. Los enfoques jerárquicos y por ventanas presentan un rendimiento inferior, con un costo computacional considerablemente mayor, especialmente al emplear clasificadores basados en transformers.
+Se observa que el modelo con backbone Swin estándar obtiene el mejor desempeño y costo computacional. Los enfoques jerárquicos y por ventanas presentan un rendimiento inferior, con un costo computacional considerablemente mayor, especialmente al emplear clasificadores basados en transformers.
 
 \subsection{Resultados con aumentación combinada (2 geométricas, 2 fotométricas, 1 SEM)}
 
@@ -740,7 +723,7 @@ Swin grande & 0.7269 & 0.7619 & 0.4766 & 7674.9682 \\
 \end{tabular}
 \end{table}
 
-La aumentación beneficia de forma clara al Swin Transformer, especialmente en su variante estándar, mientras que los modelos ViT grandes muestran una degradación del desempeño, sugiriendo una relación desfavorable entre complejidad y tamaño efectivo del dataset.
+La aumentación beneficia de forma clara al modelo con backbone Swin Transformer, especialmente en su variante estándar, mientras que los modelos con encoder ViT grande muestran una degradación del desempeño, sugiriendo una relación desfavorable entre complejidad y tamaño efectivo del dataset.
 
 \subsection{Resultados con aumentación combinada (3 geométricas, 1 fotométrica, 1 SEM)}
 
@@ -762,9 +745,9 @@ Swin grande & 0.4593 & 0.6853 & 0.0736 & 7697.5314 \\
 \end{tabular}
 \end{table}
 
-En este escenario, el Swin estándar mantiene un desempeño estable y elevado, mientras que el Swin grande sufre una degradación significativa, lo que refuerza la hipótesis de sobreajuste bajo restricciones de datos y cómputo.
+En este escenario, el modelo con Swin estándar mantiene un desempeño estable y elevado, mientras que el Swin grande sufre una degradación significativa, lo que refuerza la hipótesis de sobreajuste bajo restricciones de datos y cómputo.
 
-En conjunto, los resultados indican que los modelos Swin Transformer de complejidad moderada ofrecen el mejor equilibrio entre capacidad de representación, robustez frente a aumentación y eficiencia computacional dentro del contexto evaluado.
+En conjunto, los resultados indican que los modelos basados en Swin Transformer de complejidad moderada ofrecen el mejor equilibrio entre capacidad de representación, robustez frente a aumentación y eficiencia computacional dentro del contexto evaluado.
 
 
 
@@ -773,13 +756,13 @@ En conjunto, los resultados indican que los modelos Swin Transformer de compleji
 Para complementar los resultados cuantitativos, se analizó el comportamiento de las curvas de aprendizaje durante el entrenamiento y validación. Este análisis cualitativo es crucial para entender la estabilidad de la convergencia y detectar fenómenos de \emph{overfitting} que no se reflejan únicamente en la métrica final.
 
 
-\subsection{Impacto de la Aumentación en Swin Transformer}
+\subsection{Impacto de la Aumentación en el modelo con backbone Swin}
 
-Para aislar el efecto de la aumentación de datos en el rendimiento del mejor modelo identificado (Swin Transformer Estándar), se consolidan los resultados obtenidos bajo las distintas estrategias evaluadas en la Tabla~\ref{tab:swin_augmentation_comparison}.
+Para aislar el efecto de la aumentación de datos en el rendimiento del mejor modelo identificado (SETR-PUP con Swin Transformer Estándar), se consolidan los resultados obtenidos bajo las distintas estrategias evaluadas en la Tabla~\ref{tab:swin_augmentation_comparison}.
 
 \begin{table}[h]
 \centering
-\caption{Comparativa de Swin Transformer bajo distintas estrategias de aumentación}
+\caption{Comparativa del modelo basado en Swin Transformer bajo distintas estrategias de aumentación}
 \label{tab:swin_augmentation_comparison}
 \begin{tabular}{lccc}
 \hline
@@ -803,7 +786,7 @@ Para complementar los resultados cuantitativos, se analizó el comportamiento de
 
 La Figura~\ref{fig:val_loss_combined} muestra la evolución del \emph{Validation Loss} para los distintos modelos evaluados utilizando la estrategia de aumentación combinada (2Geo+2Photo+1SEM).
 
-Se observa un comportamiento interesante en los modelos grandes. El Swin Large (línea roja), a pesar de su mayor capacidad, no logra reducir el \emph{Validation Loss} al mismo ritmo que su contraparte estándar, posiblemente debido a que la cantidad de datos, aun con aumentación, sigue siendo insuficiente para saturar la capacidad del modelo sin un ajuste más fino de hiperparámetros.
+Se observa un comportamiento interesante en los modelos grandes. El modelo con Swin Large (línea roja), a pesar de su mayor capacidad, no logra reducir el \emph{Validation Loss} al mismo ritmo que su contraparte estándar, posiblemente debido a que la cantidad de datos, aun con aumentación, sigue siendo insuficiente para saturar la capacidad del modelo sin un ajuste más fino de hiperparámetros.
 
 \begin{figure}[H]
     \centering
@@ -812,7 +795,7 @@ Se observa un comportamiento interesante en los modelos grandes. El Swin Large (
     \label{fig:val_loss_combined}
 \end{figure}
 
-\subsubsection{Análisis de Sobreajuste en Modelos Swin}
+\subsubsection{Análisis de Sobreajuste en Modelos con backbone Swin}
 
 Un fenómeno particular se observó en el escenario de aumentación combinada \path{Combined_2Geo_2Photo_1SEM_x2}, comparando el Swin Standard y el Swin Large. La Figura~\ref{fig:overfitting_analysis} ilustra las curvas de \emph{Training Loss} vs. \emph{Validation Loss} para ambos casos.
 
@@ -838,7 +821,7 @@ Un fenómeno particular se observó en el escenario de aumentación combinada \p
 \subsection{Análisis de Escalabilidad de Datos}
 
 
-Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo. Este análisis se llevó a cabo utilizando el modelo \emph{Swin Transformer} en su configuración estándar, entrenado con subconjuntos del dataset original sin aplicar técnicas de aumentación. El objetivo fue evaluar la capacidad de aprendizaje intrínseca de la arquitectura frente a la estricta escasez de datos.
+Adicionalmente, se realizó un estudio sobre la influencia del volumen de datos en el rendimiento del modelo. Este análisis se llevó a cabo utilizando el modelo con encoder \emph{Swin Transformer} en su configuración estándar, entrenado con subconjuntos del dataset original sin aplicar técnicas de aumentación. El objetivo fue evaluar la capacidad de aprendizaje intrínseca de la arquitectura frente a la estricta escasez de datos.
 
 La Figura~\ref{fig:loss_vs_data} ilustra la evolución de la pérdida (\emph{loss}) mínima alcanzada en validación en función del porcentaje de datos disponibles. Se observa una clara tendencia decreciente en la pérdida a medida que aumenta el tamaño del dataset, lo cual confirma que el modelo no ha saturado su capacidad de aprendizaje (no ha alcanzado un \emph{plateau} de rendimiento por falta de parámetros) y se beneficiaría significativamente de la incorporación de más muestras etiquetadas. Esto justifica empíricamente la necesidad crítica de las estrategias de aumentación implementadas en este trabajo para simular un régimen de datos más abundante y explotar el potencial de la arquitectura.
 
@@ -862,12 +845,12 @@ Para visualizar el impacto cualitativo de este incremento en los datos, la Figur
 
 \subsection{Evaluación Cualitativa y Cuantitativa en Test}
 
-Para complementar los resultados cuantitativos globales, se realizó una evaluación visual y estadística sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo--estrategia que demostró el mayor rendimiento global según la métrica F1-score: el Swin Transformer Estándar entrenado con la estrategia de Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM).
+Para complementar los resultados cuantitativos globales, se realizó una evaluación visual y estadística sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo--estrategia que demostró el mayor rendimiento global según la métrica F1-score: el modelo con Swin Transformer Estándar entrenado con la estrategia de Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\linewidth, height=0.95\textheight, keepaspectratio]{test_predictions.jpg}
-    \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo Swin Transformer final.}
+    \caption{Visualización de resultados en el conjunto de prueba. Izquierda: Imagen original. Centro: Máscara real. Derecha: Máscara predicha por el modelo con backbone Swin Transformer final.}
     \label{fig:test_predictions}
 \end{figure}
 
@@ -946,15 +929,15 @@ Estas limitaciones deben considerarse al interpretar los resultados y motivan fu
 
 En este trabajo se evaluaron distintas arquitecturas y estrategias de segmentación aplicadas a imágenes SEM bajo un escenario de datos limitados, analizando tanto el desempeño cuantitativo como el comportamiento cualitativo de los modelos.
 
-Los resultados muestran de forma consistente que el \emph{Swin Transformer} en su configuración estándar ofrece el mejor equilibrio entre capacidad de representación, robustez y eficiencia computacional. Este modelo alcanza los valores más altos de \emph{F1-score} y \emph{accuracy} en todos los escenarios evaluados, manteniendo además una adecuada cohesión de las máscaras segmentadas.
+Los resultados muestran de forma consistente que el modelo SETR-PUP con backbone \emph{Swin Transformer} en su configuración estándar ofrece el mejor equilibrio entre capacidad de representación, robustez y eficiencia computacional. Este modelo alcanza los valores más altos de \emph{F1-score} y \emph{accuracy} en todos los escenarios evaluados, manteniendo además una adecuada cohesión de las máscaras segmentadas.
 
 Las estrategias de aumentación de datos resultan determinantes para mejorar la generalización del modelo. En particular, las configuraciones combinadas permiten incrementar el \emph{F1-score} en aproximadamente cinco puntos porcentuales respecto al entrenamiento sin aumentación, sin comprometer la coherencia estructural de las predicciones. Este efecto confirma la importancia de la diversidad sintética para compensar la escasez de muestras etiquetadas en este dominio.
 
 Los enfoques alternativos basados en \emph{Quadtree} y \emph{Sliding Windows} muestran un rendimiento inferior y un costo computacional significativamente mayor, especialmente cuando emplean clasificadores basados en transformers, lo que limita su viabilidad práctica frente a modelos de segmentación end-to-end.
 
-El análisis de curvas de aprendizaje y de escalabilidad con respecto al volumen de datos indica que el Swin Transformer estándar no ha saturado su capacidad de aprendizaje y se beneficiaría de conjuntos de datos más extensos, reforzando la relevancia de la aumentación y la recolección de nuevas muestras.
+El análisis de curvas de aprendizaje y de escalabilidad con respecto al volumen de datos indica que el modelo basado en Swin Transformer no ha saturado su capacidad de aprendizaje y se beneficiaría de conjuntos de datos más extensos, reforzando la relevancia de la aumentación y la recolección de nuevas muestras.
 
-En conjunto, los resultados posicionan al Swin Transformer de complejidad moderada, entrenado con una estrategia de aumentación adecuada, como la opción más efectiva para la segmentación de zonas frágiles y dúctiles en imágenes SEM dentro del contexto evaluado. Como trabajo futuro, se plantea la incorporación de datasets más amplios y la exploración de esquemas híbridos que integren información multiescala de forma más eficiente.
+En conjunto, los resultados posicionan a la arquitectura SETR-PUP con un codificador Swin de complejidad moderada, entrenado con una estrategia de aumentación adecuada, como la opción más efectiva para la segmentación de zonas frágiles y dúctiles en imágenes SEM dentro del contexto evaluado. Como trabajo futuro, se plantea la incorporación de datasets más amplios y la exploración de esquemas híbridos que integren información multiescala de forma más eficiente.
 
 \bibliographystyle{ieeetr}
 \bibliography{references}
