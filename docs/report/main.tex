@@ -190,7 +190,7 @@ El componente \texttt{ModelNode} orquesta la ejecución siguiendo un principio d
 
 
 \subsection{Evaluación Imparcial y Persistencia}
-La etapa final (\textit{Evaluator Node}) opera como un auditor independiente. Recibe las predicciones generadas y calcula métricas de desempeño sin acceso a la lógica que las produjo, asegurando una "evaluación ciega".
+La etapa final (\textit{Evaluator Node}) opera como un auditor independiente. Recibe las predicciones generadas y calcula métricas de desempeño sin acceso a la lógica que las produjo, asegurando una  ``evaluación ciega''.
 Adicionalmente, el sistema implementa un mecanismo de persistencia granular que registra no solo las métricas finales, sino también los tiempos de cómputo y las configuraciones exactas. Esto habilita un análisis posterior profundo sobre el \textit{trade-off} entre costo computacional y precisión, fundamental para proponer soluciones viables en entornos de recursos limitados.
 
 En conclusión, esta metodología instrumentaliza el método científico: permite plantear hipótesis sobre arquitecturas y datos, y validarlas o refutarlas mediante evidencia empírica generada en un entorno controlado.
@@ -206,9 +206,9 @@ En conclusión, esta metodología instrumentaliza el método científico: permit
 A continuación se proporciona información sobre los datasets utilizados.
 \subsection{Dataset de segmentación}
 
-El dataset principal utilizado para la tarea de segmentación está compuesto por 109 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
+El dataset principal utilizado para la tarea de segmentación está compuesto por 94 imágenes obtenidas mediante microscopía electrónica de barrido (SEM) utilizando un microscopio Vega 3 Scan. Cada imagen cuenta con su correspondiente máscara de segmentación a nivel de píxel.
 
-De este conjunto, 15 imágenes fueron seleccionadas aleatoriamente y reservadas exclusivamente como conjunto de prueba independiente (\emph{test set}). Dicho subconjunto no fue utilizado durante ninguna etapa de entrenamiento, validación ni análisis exploratorio, y se empleó únicamente para la evaluación final del modelo seleccionado luego de la experimentación. Todos los análisis y la experimentación se realizan íntegramente sobre el subconjunto restante de 94 imágenes.
+De este conjunto, 15 imágenes fueron seleccionadas aleatoriamente y reservadas exclusivamente como conjunto de prueba independiente (\emph{test set}). Dicho subconjunto no fue utilizado durante ninguna etapa de entrenamiento, validación ni análisis exploratorio, y se empleó únicamente para la evaluación final del modelo seleccionado luego de la experimentación. Todos los análisis y la experimentación se realizan íntegramente sobre el subconjunto restante, complementado con 15 imágenes externas del repositorio \cite{repo_imagenes}, sumando un total de 94 imagenes para esta tarea.
 
 Las máscaras de referencia delimitan dos morfologías de fractura fundamentales: zonas de comportamiento frágil y zonas de comportamiento dúctil. A nivel global, el conjunto presenta un desbalance significativo, con 73 imágenes donde predomina la fractura dúctil y 21 imágenes con mayor presencia de fractura frágil. Esta distribución refleja la naturaleza del material analizado y constituye un desafío adicional para la generalización del modelo.
 
@@ -860,13 +860,9 @@ Para visualizar el impacto cualitativo de este incremento en los datos, la Figur
 \end{figure}
 
 
-\subsection{Evaluación Cualitativa en Test}
+\subsection{Evaluación Cualitativa y Cuantitativa en Test}
 
-Para complementar los resultados cuantitativos, se realizó una evaluación visual sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo-estrategia que demostró el mayor rendimiento global según la métrica F1-score: el Swin Transformer Estándar entrenado con la estrategia de Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM).
-
-La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por esta configuración óptima. La visualización se estructura en tres columnas para facilitar el cotejo directo: la primera columna muestra la imagen SEM original, capturando la textura compleja del material; la columna central exhibe la máscara de referencia (\emph{Ground Truth}) generada por expertos; y la tercera columna presenta la segmentación inferida por el modelo.
-
-
+Para complementar los resultados cuantitativos globales, se realizó una evaluación visual y estadística sobre el conjunto de prueba independiente. Para este análisis, se seleccionó el par modelo--estrategia que demostró el mayor rendimiento global según la métrica F1-score: el Swin Transformer Estándar entrenado con la estrategia de Aumentación Combinada (2 Geom, 2 Fotom, 1 SEM).
 
 \begin{figure}[H]
     \centering
@@ -875,7 +871,48 @@ La Figura~\ref{fig:test_predictions} presenta las segmentaciones generadas por e
     \label{fig:test_predictions}
 \end{figure}
 
-El análisis detallado de estas imágenes revela que el modelo ha logrado aprender no solo la textura local, sino la topología de las fracturas. Se observa una notable precisión en la delimitación de las zonas dúctiles frente a las áreas frágiles, respetando los bordes irregulares característicos de estas morfologías. Incluso en regiones donde el contraste es bajo o la transición es sutil, el modelo mantiene una coherencia estructural alta, evitando la fragmentación excesiva y demostrando una generalización robusta ante datos no vistos.
+La Figura~\ref{fig:test_predictions} presenta ejemplos representativos de las segmentaciones generadas por esta configuración óptima. La visualización se estructura en tres columnas para facilitar el cotejo directo: la primera columna muestra la imagen SEM original, capturando la textura compleja del material; la columna central exhibe la máscara de referencia (\emph{Ground Truth}); y la tercera columna presenta la segmentación inferida por el modelo.
+
+Además de la inspección visual, se incorporó un análisis cuantitativo basado en distribuciones de métricas calculadas sobre el conjunto de prueba mediante una estrategia \emph{leave-two-out}. Este enfoque permitió caracterizar la variabilidad del desempeño del modelo en términos de F1-score, Intersection over Union (IoU), precisión, recall, accuracy y cohesión de máscara a lo largo de múltiples particiones del conjunto de test, proporcionando una estimación más robusta de su comportamiento fuera de muestra.
+
+Las Figuras~\ref{fig:f1_iou_dist}, \ref{fig:prec_rec_dist}, \ref{fig:acc_cohesion_dist} y \ref{fig:f1_mean_dist} muestran las distribuciones obtenidas para las distintas métricas evaluadas. En conjunto, se observa una concentración consistente de los valores en rangos elevados, acompañada de una dispersión moderada, lo que sugiere estabilidad en la capacidad de generalización del modelo seleccionado frente a variaciones en los datos de prueba. Además se obtuvo un valor F1 medio entre ambas clases de 0.7634, en concordancia con las tendencias de desempeño observadas a lo largo del análisis.
+
+\begin{figure*}[t]
+    \centering
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_F1_Class0.png}}\hfill
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_F1_Class1.png}}\\
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_IoU_Class0.png}}\hfill
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_IoU_Class1.png}}
+    \caption{Distribuciones de F1-score e Intersection over Union (IoU) obtenidas mediante validación \emph{leave-two-out} en el conjunto de prueba. Las clases 0 y 1 corresponden a las morfologías dúctil y frágil, respectivamente.}
+    \label{fig:f1_iou_dist}
+\end{figure*}
+
+\begin{figure*}[t]
+    \centering
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_Precision_Class0.png}}\hfill
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_Precision_Class1.png}}\\
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_Recall_Class0.png}}\hfill
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_Recall_Class1.png}}
+    \caption{Distribuciones de precisión y recall por clase en el conjunto de prueba, calculadas mediante validación \emph{leave-two-out}. Las clases 0 y 1 representan las regiones dúctiles y frágiles, respectivamente.}
+    \label{fig:prec_rec_dist}
+\end{figure*}
+
+\begin{figure*}[t]
+    \centering
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_Accuracy.png}}\hfill
+    \subfloat[]{\includegraphics[width=0.45\textwidth]{histogram_Mask_Cohesion.png}}
+    \caption{Distribuciones de accuracy y cohesión de máscara obtenidas sobre el conjunto de prueba mediante validación \emph{leave-two-out}.}
+    \label{fig:acc_cohesion_dist}
+\end{figure*}
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.5\textwidth]{histogram_F1_Mean.png}
+    \caption{Distribución del F1-score medio entre ambas clases obtenida mediante validación \emph{leave-two-out} sobre el conjunto de prueba independiente.}
+    \label{fig:f1_mean_dist}
+\end{figure*}
+
+El análisis conjunto de los resultados cualitativos y cuantitativos indica que el modelo ha logrado aprender no solo la textura local, sino también la topología global de las fracturas. Se observa una delimitación consistente de las zonas dúctiles frente a las áreas frágiles, respetando los bordes irregulares característicos de estas morfologías. Incluso en regiones de bajo contraste o con transiciones graduales, el modelo mantiene una elevada coherencia estructural, evitando la fragmentación excesiva y reforzando las conclusiones derivadas del análisis estadístico sobre el conjunto de prueba independiente.
 
 \subsection{Posibles Sesgos}
 
