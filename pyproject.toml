@@ -47,7 +47,7 @@ lint.select = [
 ]
 lint.ignore = ["D100", "D104", "D203", "D212"]
 
-exclude = [".venv", "build", "dist", "__pycache__", ".git", "plots/", "results/"]
+exclude = [".venv", "build", "dist", "__pycache__", ".git", "plots/", "results/", '*.ipynb']
 format.quote-style = "double"
 format.indent-style = "space"
 line-length = 88
